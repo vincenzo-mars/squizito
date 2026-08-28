@@ -1,0 +1,158 @@
+@import '@fontsource-variable/nunito';
+
+:root {
+	--bg: #f4f7fb;
+	--bg-tint: #e8eef8;
+	--surface: #ffffff;
+	--ink: #2b3445;
+	--ink-soft: #61708a;
+	--line: #dde5f0;
+	--line-strong: #c4d1e4;
+
+	--green: #58cc02;
+	--green-dark: #46a302;
+	--green-soft: #e8f8dc;
+	--red: #ff4b4b;
+	--red-dark: #d63a3a;
+	--red-soft: #ffe6e6;
+	--blue: #1cb0f6;
+	--blue-dark: #1899d6;
+	--blue-soft: #e3f4ff;
+	--yellow: #ffc800;
+	--yellow-dark: #e0ac00;
+	--purple: #ce82ff;
+	--purple-dark: #a568d4;
+
+	--reading: 68ch;
+	--radius: 18px;
+	--radius-lg: 26px;
+	--shadow: 0 10px 30px rgb(43 52 69 / 0.08);
+	--depth: 4px;
+
+	--font: 'Nunito Variable', 'Nunito', ui-rounded, system-ui, sans-serif;
+	--speed: 220ms;
+	--ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html {
+	background: var(--bg);
+}
+
+body {
+	margin: 0;
+	font-family: var(--font);
+	color: var(--ink);
+	background:
+		radial-gradient(circle at 12% -10%, var(--blue-soft), transparent 42%),
+		radial-gradient(circle at 92% 4%, #f3e8ff, transparent 38%), var(--bg);
+	min-height: 100vh;
+	-webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+	margin: 0;
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	font-weight: 800;
+	text-wrap: balance;
+}
+
+p {
+	margin: 0;
+	line-height: 1.6;
+	text-wrap: pretty;
+}
+
+/* Question and answer texts come from the user and can be long: never let them push the layout. */
+h1,
+h2,
+h3,
+p,
+li,
+button,
+textarea {
+	overflow-wrap: break-word;
+	word-break: break-word;
+}
+
+a {
+	color: var(--blue-dark);
+	font-weight: 700;
+}
+
+button {
+	font: inherit;
+}
+
+:focus-visible {
+	outline: 3px solid var(--blue);
+	outline-offset: 3px;
+	border-radius: 6px;
+}
+
+.page {
+	width: min(920px, 100% - 2.5rem);
+	margin-inline: auto;
+	padding-block: clamp(1.75rem, 5vw, 3.5rem) 4rem;
+	display: grid;
+	gap: 1.75rem;
+}
+
+.surface {
+	background: var(--surface);
+	border: 2px solid var(--line);
+	border-radius: var(--radius-lg);
+	box-shadow: var(--shadow);
+	padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.muted {
+	color: var(--ink-soft);
+}
+
+.eyebrow {
+	text-transform: uppercase;
+	letter-spacing: 0.14em;
+	font-size: 0.72rem;
+	font-weight: 800;
+	color: var(--ink-soft);
+}
+
+.stack {
+	display: grid;
+	gap: 0.85rem;
+}
+
+.row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+	align-items: center;
+}
+
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.001ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.001ms !important;
+	}
+}
