@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import AnswerBurst from '$lib/components/AnswerBurst.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import MatchBoard from '$lib/components/MatchBoard.svelte';
 	import OptionButton from '$lib/components/OptionButton.svelte';
 	import ScoreBar from '$lib/components/ScoreBar.svelte';
 	import { LETTERS } from '$lib/format';
@@ -25,9 +26,12 @@
 			? entry.optionOrder.map((index) => ({ index, option: question.options[index] }))
 			: []
 	);
-	let canConfirm = $derived((entry?.selected.length ?? 0) > 0);
+	let isMatch = $derived(question?.kind === 'match');
+	/** Matching and multiple-answer questions are confirmed explicitly, single choice is not. */
+	let needsConfirm = $derived(isMatch || (question?.multiple ?? false));
+	let canConfirm = $derived(isMatch ? run.linked : (entry?.selected.length ?? 0) > 0);
 	// Only pin the footer when it actually holds a button, otherwise it just eats screen.
-	let hasAction = $derived(run.mode === 'exam' || revealed || (question?.multiple ?? false));
+	let hasAction = $derived(run.mode === 'exam' || revealed || needsConfirm);
 
 	onMount(() => {
 		settings.load();
@@ -133,6 +137,8 @@
 			return;
 		}
 
+		if (isMatch) return;
+
 		const digit = Number(event.key);
 		if (!Number.isInteger(digit) || digit < 1 || digit > options.length) return;
 		event.preventDefault();
@@ -152,25 +158,44 @@
 			<section class="surface question">
 				<div class="meta">
 					{#if question.tag}<span class="tag">{question.tag}</span>{/if}
-					{#if question.multiple}<span class="tag multi">scegli tutte le corrette</span>{/if}
+					{#if question.kind === 'match'}
+						<span class="tag multi">collega ogni termine alla sua definizione</span>
+					{:else if question.multiple}
+						<span class="tag multi">scegli tutte le corrette</span>
+					{/if}
 				</div>
 				<h1 class:long={question.text.length > 110} class:xlong={question.text.length > 260}>
 					{question.text}
 				</h1>
 
-				<div class="options">
-					{#each options as { index, option }, position (index)}
-						<OptionButton
-							text={option.text}
-							letter={LETTERS[position]}
-							selected={entry.selected.includes(index)}
-							state={optionState(index)}
-							multiple={question.multiple}
-							disabled={revealed}
-							onclick={() => choose(index)}
-						/>
-					{/each}
-				</div>
+				{#if question.kind === 'match'}
+					<MatchBoard
+						pairs={question.pairs}
+						leftOrder={entry.leftOrder}
+						rightOrder={entry.rightOrder}
+						links={entry.links}
+						{revealed}
+						onlink={(name, definition) => {
+							run.link(name, definition);
+							sfx.select();
+						}}
+						onunlink={(name) => run.unlink(name)}
+					/>
+				{:else}
+					<div class="options">
+						{#each options as { index, option }, position (index)}
+							<OptionButton
+								text={option.text}
+								letter={LETTERS[position]}
+								selected={entry.selected.includes(index)}
+								state={optionState(index)}
+								multiple={question.multiple}
+								disabled={revealed}
+								onclick={() => choose(index)}
+							/>
+						{/each}
+					</div>
+				{/if}
 			</section>
 		{/key}
 
@@ -197,7 +222,7 @@
 					<Button size="lg" variant={entry.correct ? 'primary' : 'blue'} onclick={advance} full>
 						{run.isLast ? 'Vedi i risultati' : 'Avanti'}
 					</Button>
-				{:else if question.multiple}
+				{:else if needsConfirm}
 					<Button size="lg" onclick={confirm} disabled={!canConfirm} full>Conferma</Button>
 				{:else}
 					<p class="hint muted">Scegli una risposta, oppure premi il numero corrispondente.</p>

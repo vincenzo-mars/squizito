@@ -51,6 +51,24 @@ Tag: linguaggi
 Vincoli: almeno 2 opzioni per domanda, almeno una corretta e almeno una sbagliata. Gli errori di
 formato indicano riga e motivo.
 
+### Collegamenti termine-definizione
+
+Un blocco `##` le cui righe hanno la forma `- nome -> definizione`, senza `[ ]`, diventa un
+esercizio di collegamento: l'app mescola le due colonne e le si riunisce a mano.
+
+```markdown
+## Collega ogni processo alla sua descrizione
+
+- Mitosi -> Divisione cellulare che produce due cellule identiche
+- Meiosi -> Divisione che dimezza il corredo cromosomico
+- Apoptosi -> Morte cellulare programmata
+
+> Sono tre processi distinti.
+```
+
+Da 2 a 8 coppie, `→` e `=>` valgono come `->`, e un blocco non può mescolare coppie e opzioni `[x]`.
+Il punteggio è tutto o niente, come per le domande a risposta multipla.
+
 ## Prompt per NotebookLM
 
 ```text

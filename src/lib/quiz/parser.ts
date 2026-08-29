@@ -1,12 +1,14 @@
-import type { ParseIssue, ParseResult, Question, QuestionOption } from './types';
+import type { MatchPair, ParseIssue, ParseResult, Question, QuestionOption } from './types';
 
 const FENCE = /^\s*```/;
-const TITLE = /^#\s+(.*)$/;
-const HEADING = /^#{2,6}\s+(.*)$/;
-const OPTION = /^\s*[-*+]\s*[[(]\s*([xX]?)\s*[\])]\s*(.*)$/;
+const TITLE = /^\s*#\s*(.*)$/;
+const HEADING = /^\s*#{2,6}\s*(.*)$/;
+/** Bullets an LLM actually emits: hyphen, asterisk, plus, bullet, en dash, em dash. */
+const OPTION = /^\s*[-*+•–—]\s*[[(]\s*([xX]?)\s*[\])]\s*(.*)$/;
 const TAG = /^\s*(?:tag|tags|categoria|category)\s*:\s*(.*)$/i;
 const QUOTE = /^\s*>\s?(.*)$/;
 const RULE = /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/;
+const PAIR = /^\s*[-*+•–—]\s*(.+?)\s*(?:->|→|=>|-->|›)\s*(.*)$/;
 const NUMBERING = /^\d+\s*[.)\]]\s*/;
 
 /** Strips the inline markdown NotebookLM tends to sprinkle around, so the UI renders plain text. */
@@ -24,6 +26,7 @@ type Draft = {
 	tag?: string;
 	explanation: string[];
 	options: QuestionOption[];
+	pairs: MatchPair[];
 };
 
 /**
@@ -47,19 +50,22 @@ export function parseQuiz(source: string): ParseResult {
 
 		if (!line.trim() || FENCE.test(line) || RULE.test(line)) continue;
 
-		const titleMatch = line.match(TITLE);
-		if (titleMatch) {
-			if (!title) title = clean(titleMatch[1]);
-			continue;
+		const headingMatch = line.match(HEADING);
+		if (!headingMatch) {
+			const titleMatch = line.match(TITLE);
+			if (titleMatch) {
+				if (!title) title = clean(titleMatch[1]);
+				continue;
+			}
 		}
 
-		const headingMatch = line.match(HEADING);
 		if (headingMatch) {
 			current = {
 				line: number,
 				text: clean(headingMatch[1]).replace(NUMBERING, ''),
 				explanation: [],
-				options: []
+				options: [],
+				pairs: []
 			};
 			drafts.push(current);
 			continue;
@@ -77,6 +83,22 @@ export function parseQuiz(source: string): ParseResult {
 				continue;
 			}
 			current.options.push({ text, correct: optionMatch[1].toLowerCase() === 'x' });
+			continue;
+		}
+
+		const pairMatch = line.match(PAIR);
+		if (pairMatch) {
+			if (!current) {
+				errors.push({ line: number, message: 'Coppia trovata prima di una domanda `## ...`.' });
+				continue;
+			}
+			const name = clean(pairMatch[1]);
+			const definition = clean(pairMatch[2]);
+			if (!name || !definition) {
+				errors.push({ line: number, message: 'Coppia incompleta: serve `- nome -> definizione`.' });
+				continue;
+			}
+			current.pairs.push({ name, definition });
 			continue;
 		}
 
@@ -106,6 +128,42 @@ export function parseQuiz(source: string): ParseResult {
 			errors.push({ line: draft.line, message: 'Domanda senza testo.' });
 			continue;
 		}
+		if (draft.options.length && draft.pairs.length) {
+			errors.push({
+				line: draft.line,
+				message: `La domanda ${label} mescola opzioni [x] e coppie "nome -> definizione": tienile separate.`
+			});
+			continue;
+		}
+
+		if (draft.pairs.length) {
+			if (draft.pairs.length < 2) {
+				errors.push({
+					line: draft.line,
+					message: `Il collegamento ${label} ha una sola coppia: ne servono almeno 2.`
+				});
+				continue;
+			}
+			if (draft.pairs.length > 8) {
+				errors.push({
+					line: draft.line,
+					message: `Il collegamento ${label} ha ${draft.pairs.length} coppie: il massimo è 8.`
+				});
+				continue;
+			}
+
+			questions.push({
+				text: draft.text,
+				tag: draft.tag,
+				explanation: draft.explanation.length ? draft.explanation.join(' ') : undefined,
+				kind: 'match',
+				options: [],
+				pairs: draft.pairs,
+				multiple: false
+			});
+			continue;
+		}
+
 		if (draft.options.length < 2) {
 			errors.push({
 				line: draft.line,
@@ -133,7 +191,9 @@ export function parseQuiz(source: string): ParseResult {
 			text: draft.text,
 			tag: draft.tag,
 			explanation: draft.explanation.length ? draft.explanation.join(' ') : undefined,
+			kind: 'choice',
 			options: draft.options,
+			pairs: [],
 			multiple: correct > 1
 		});
 	}
