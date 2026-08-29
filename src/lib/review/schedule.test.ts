@@ -12,10 +12,12 @@ import type { Question } from '$lib/quiz/types';
 
 const question: Question = {
 	text: 'Qual è la capitale?',
+	kind: 'choice',
 	options: [
 		{ text: 'Roma', correct: true },
 		{ text: 'Milano', correct: false }
 	],
+	pairs: [],
 	multiple: false
 };
 
