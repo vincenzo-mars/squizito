@@ -1,4 +1,5 @@
 import { awardBadges, badgeById, type Badge } from '$lib/quiz/badges';
+import type { Level } from '$lib/quiz/levels';
 import { parseQuiz } from '$lib/quiz/parser';
 import { pointsFor } from '$lib/quiz/scoring';
 import { shuffled } from '$lib/quiz/shuffle';
@@ -6,6 +7,7 @@ import type { Question, Quiz } from '$lib/quiz/types';
 import { clearSession, readSession, writeSession } from '$lib/storage/safe';
 import type { Attempt, QuizMode, StoredQuiz } from '$lib/storage/types';
 import { library } from './library.svelte';
+import { profile } from './profile.svelte';
 
 const KEY = 'run';
 
@@ -300,10 +302,10 @@ class Run {
 		this.#persist();
 	}
 
-	/** Closes the run, writes the attempt to the library and returns the badges earned. */
-	finish(): Badge[] {
-		if (!this.#data) return [];
-		if (this.#data.finishedAt) return this.#badgesOfAttempt();
+	/** Closes the run, writes the attempt to the library and returns badges + level-up info. */
+	finish(): { badges: Badge[]; leveledUp: boolean; newLevel: Level | null } {
+		if (!this.#data) return { badges: [], leveledUp: false, newLevel: null };
+		if (this.#data.finishedAt) return this.#finishResult();
 
 		const data = this.#data;
 		const previousBest = library.best(data.quizId)?.score ?? -1;
@@ -336,9 +338,18 @@ class Run {
 		data.finishedAt = attempt.at;
 		data.attemptId = attempt.id;
 		library.addAttempt(data.quizId, attempt);
+
+		let leveledUp = false;
+		let newLevel: Level | null = null;
+		if (!data.partial) {
+			leveledUp = profile.addXp(data.score);
+			if (leveledUp) newLevel = profile.level;
+			profile.recordDay();
+		}
+
 		this.#persist();
 
-		return badges;
+		return { badges, leveledUp, newLevel };
 	}
 
 	get attempt(): Attempt | undefined {
@@ -358,6 +369,10 @@ class Run {
 		this.#data = null;
 		this.#quiz = null;
 		clearSession(KEY);
+	}
+
+	#finishResult(): { badges: Badge[]; leveledUp: boolean; newLevel: Level | null } {
+		return { badges: this.#badgesOfAttempt(), leveledUp: false, newLevel: null };
 	}
 
 	#badgesOfAttempt(): Badge[] {

@@ -52,9 +52,18 @@ export type LibraryData = {
 	quizzes: StoredQuiz[];
 };
 
+export type ProfileData = {
+	version: 1;
+	nickname: string;
+	xp: number;
+	/** YYYY-MM-DD strings of days with at least one completed (non-partial) session. */
+	activeDays: string[];
+};
+
 export type BackupFile = {
 	app: 'squizito';
-	version: 1;
+	version: 1 | 2;
 	exportedAt: number;
 	quizzes: StoredQuiz[];
+	profile?: ProfileData;
 };
