@@ -7,6 +7,7 @@
 	import Confetti from '$lib/components/Confetti.svelte';
 	import { formatDuration, percentage } from '$lib/format';
 	import type { Badge } from '$lib/quiz/badges';
+	import type { Level } from '$lib/quiz/levels';
 	import { maxScore } from '$lib/quiz/scoring';
 	import { describeDue } from '$lib/review/schedule';
 	import { library } from '$lib/state/library.svelte';
@@ -18,6 +19,8 @@
 	let now = $state(Date.now());
 	let badges = $state<Badge[]>([]);
 	let previousBest = $state<number | null>(null);
+	let leveledUp = $state(false);
+	let newLevel = $state<Level | null>(null);
 
 	let correct = $derived(run.correctCount);
 	let total = $derived(run.total);
@@ -66,7 +69,10 @@
 			: [];
 		previousBest = earlier.length ? Math.max(...earlier) : null;
 
-		badges = run.finish();
+		const result = run.finish();
+		badges = result.badges;
+		leveledUp = result.leveledUp;
+		newLevel = result.newLevel;
 		ready = true;
 		sfx.finish(ratio >= 60);
 	});
@@ -138,6 +144,15 @@
 					</div>
 				{/if}
 			</div>
+
+			{#if leveledUp && newLevel}
+				<div class="levelup-banner" role="status" aria-live="polite">
+					<span class="levelup-emoji">{newLevel.emoji}</span>
+					<span class="levelup-text">
+						Livello {newLevel.number} raggiunto: <strong>{newLevel.name}</strong>
+					</span>
+				</div>
+			{/if}
 
 			{#if run.partial}
 				<p class="muted note">
@@ -430,6 +445,28 @@
 
 	.actions {
 		justify-content: center;
+	}
+
+	.levelup-banner {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		padding: 0.6rem 1.2rem;
+		border-radius: var(--radius-lg);
+		background: var(--yellow);
+		border: 2px solid #d4a300;
+		color: #543f00;
+		font-weight: 800;
+		animation: pop 500ms var(--ease);
+	}
+
+	.levelup-emoji {
+		font-size: 1.6rem;
+		line-height: 1;
+	}
+
+	.levelup-text {
+		font-size: 0.95rem;
 	}
 
 	@keyframes pop {
