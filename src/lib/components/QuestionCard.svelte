@@ -37,8 +37,13 @@
 		{/if}
 		<div class="tags">
 			{#if question.tag}<span class="tag">{question.tag}</span>{/if}
-			<span class="tag soft">{question.options.length} opzioni</span>
-			{#if question.multiple}<span class="tag multi">risposta multipla</span>{/if}
+			{#if question.kind === 'match'}
+				<span class="tag soft">{question.pairs.length} coppie</span>
+				<span class="tag multi">collegamento</span>
+			{:else}
+				<span class="tag soft">{question.options.length} opzioni</span>
+				{#if question.multiple}<span class="tag multi">risposta multipla</span>{/if}
+			{/if}
 		</div>
 	</div>
 </article>

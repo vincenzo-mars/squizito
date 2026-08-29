@@ -24,17 +24,19 @@
 
 {@render children()}
 
+<footer>fatto con amore per k.</footer>
+
 <style>
 	header {
 		width: min(920px, 100% - 2.5rem);
 		margin-inline: auto;
-		padding-top: 1.5rem;
+		padding-top: 1.75rem;
 	}
 
 	.brand {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.6rem;
+		gap: 0.8rem;
 		text-decoration: none;
 		color: var(--ink);
 	}
@@ -42,20 +44,30 @@
 	.mark {
 		display: inline-flex;
 		align-items: center;
-		gap: 2px;
-		padding: 0.25rem 0.5rem;
-		border-radius: 14px;
+		gap: 4px;
+		padding: 0.4rem 0.7rem;
+		border-radius: 18px;
 		background: var(--orange-soft);
-		border: 2px solid var(--orange);
-		font-size: 1.1rem;
+		border: 3px solid var(--orange);
+		font-size: clamp(1.5rem, 4vw, 2rem);
 		line-height: 1;
-		box-shadow: 0 3px 0 var(--orange-dark);
+		box-shadow: 0 4px 0 var(--orange-dark);
 		transform: rotate(-4deg);
 	}
 
 	.name {
-		font-size: 1.35rem;
+		font-size: clamp(1.9rem, 5vw, 2.6rem);
 		font-weight: 800;
-		letter-spacing: -0.02em;
+		letter-spacing: -0.03em;
+	}
+
+	footer {
+		width: min(920px, 100% - 2.5rem);
+		margin: -2.5rem auto 1.25rem;
+		text-align: center;
+		font-size: 0.62rem;
+		letter-spacing: 0.06em;
+		color: var(--ink-soft);
+		opacity: 0.55;
 	}
 </style>

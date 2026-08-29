@@ -149,3 +149,228 @@ Ecco un po' di testo che non c'entra.
 		expect(result.errors[0].line).toBe(0);
 	});
 });
+
+describe('parseQuiz, collegamenti', () => {
+	it('riconosce un esercizio di collegamento dalle righe con la freccia', () => {
+		const quiz = expectOk(`## Collega ogni termine alla sua definizione
+- Mitosi -> Divisione cellulare che produce due cellule identiche
+- Meiosi -> Divisione che dimezza il corredo cromosomico
+- Apoptosi -> Morte cellulare programmata
+> Sono tre processi distinti.
+`);
+		const question = quiz.questions[0];
+		expect(question.kind).toBe('match');
+		expect(question.options).toEqual([]);
+		expect(question.pairs).toHaveLength(3);
+		expect(question.pairs[0]).toEqual({
+			name: 'Mitosi',
+			definition: 'Divisione cellulare che produce due cellule identiche'
+		});
+		expect(question.explanation).toBe('Sono tre processi distinti.');
+	});
+
+	it('accetta anche → e =>', () => {
+		const quiz = expectOk(`## Collega
+- Uno → Primo
+- Due => Secondo
+`);
+		expect(quiz.questions[0].pairs.map((pair) => pair.definition)).toEqual(['Primo', 'Secondo']);
+	});
+
+	it('marca le domande a scelta come kind choice', () => {
+		const quiz = expectOk(`## Domanda?
+- [x] Giusta
+- [ ] Sbagliata
+`);
+		expect(quiz.questions[0].kind).toBe('choice');
+		expect(quiz.questions[0].pairs).toEqual([]);
+	});
+
+	it('non confonde una opzione che contiene una freccia', () => {
+		const quiz = expectOk(`## Domanda?
+- [x] A -> B è corretto
+- [ ] Sbagliata
+`);
+		expect(quiz.questions[0].kind).toBe('choice');
+		expect(quiz.questions[0].options[0].text).toBe('A -> B è corretto');
+	});
+
+	it('rifiuta un blocco che mescola opzioni e coppie', () => {
+		const result = parseQuiz(`## Domanda?
+- [x] Giusta
+- Nome -> Definizione
+`);
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(result.errors[0].message).toContain('mescola');
+	});
+
+	it('rifiuta un collegamento con una sola coppia', () => {
+		const result = parseQuiz(`## Collega
+- Solo -> Una
+`);
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(result.errors[0].message).toContain('almeno 2');
+	});
+
+	it('rifiuta un collegamento con più di otto coppie', () => {
+		const pairs = Array.from({ length: 9 }, (_, i) => `- Nome ${i} -> Definizione ${i}`).join('\n');
+		const result = parseQuiz(`## Collega\n${pairs}\n`);
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(result.errors[0].message).toContain('massimo è 8');
+	});
+
+	it('segnala una coppia senza definizione', () => {
+		const result = parseQuiz(`## Collega
+- Nome ->
+- Altro -> Definizione
+`);
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(result.errors[0].message).toContain('incompleta');
+	});
+});
+
+describe('parseQuiz, tenuta del markdown', () => {
+	it('regge righe vuote mancanti fra i blocchi', () => {
+		const quiz = expectOk(`# Titolo
+> Descrizione
+## Prima?
+- [x] Giusta
+- [ ] Sbagliata
+> Nota uno.
+## Seconda?
+- [ ] Sbagliata
+- [x] Giusta
+> Nota due.`);
+		expect(quiz.questions).toHaveLength(2);
+		expect(quiz.questions[0].explanation).toBe('Nota uno.');
+	});
+
+	it('regge righe vuote di troppo, anche dentro le opzioni', () => {
+		const quiz = expectOk(`# Titolo
+
+
+## Domanda?
+
+- [x] Giusta
+
+
+- [ ] Sbagliata
+
+
+> Nota.
+`);
+		expect(quiz.questions[0].options).toHaveLength(2);
+		expect(quiz.questions[0].explanation).toBe('Nota.');
+	});
+
+	it('regge spazi in coda, indentazione e tabulazioni', () => {
+		const quiz = expectOk(
+			'##   Domanda con spazi?   \n\t- [x]   Giusta   \n  - [ ] Sbagliata  \n   >   Nota.   \n'
+		);
+		expect(quiz.questions[0].text).toBe('Domanda con spazi?');
+		expect(quiz.questions[0].options[0].text).toBe('Giusta');
+		expect(quiz.questions[0].explanation).toBe('Nota.');
+	});
+
+	it('regge le interruzioni di riga in stile Windows', () => {
+		const quiz = expectOk('# Titolo\r\n\r\n## Domanda?\r\n- [x] Giusta\r\n- [ ] Sbagliata\r\n');
+		expect(quiz.questions).toHaveLength(1);
+		expect(quiz.questions[0].options[1].text).toBe('Sbagliata');
+	});
+
+	it('regge gli spazi unificatori che gli LLM infilano ogni tanto', () => {
+		const nbsp = '\u00a0';
+		const quiz = expectOk(
+			`##${nbsp}Domanda?\n-${nbsp}[x]${nbsp}Giusta${nbsp}\n- [ ] Sbagliata\n>${nbsp}Nota.\n`
+		);
+		expect(quiz.questions[0].text).toBe('Domanda?');
+		expect(quiz.questions[0].options[0]).toEqual({ text: 'Giusta', correct: true });
+		expect(quiz.questions[0].explanation).toBe('Nota.');
+	});
+
+	it('accetta trattini lunghi e pallini al posto del trattino', () => {
+		const quiz = expectOk(`## Domanda?
+– [x] Giusta
+— [ ] Sbagliata
+• [ ] Altra
+`);
+		expect(quiz.questions[0].options).toHaveLength(3);
+		expect(quiz.questions[0].options[0].correct).toBe(true);
+	});
+
+	it('accetta la casella senza spazio e con la x maiuscola', () => {
+		const quiz = expectOk(`## Domanda?
+-[X] Giusta
+-[ ] Sbagliata
+`);
+		expect(quiz.questions[0].options[0].correct).toBe(true);
+		expect(quiz.questions[0].options[1].correct).toBe(false);
+	});
+
+	it('accetta la spiegazione senza spazio dopo il maggiore', () => {
+		const quiz = expectOk(`## Domanda?
+- [x] Giusta
+- [ ] Sbagliata
+>Nota attaccata.
+`);
+		expect(quiz.questions[0].explanation).toBe('Nota attaccata.');
+	});
+
+	it('accetta un titolo senza spazio dopo il cancelletto', () => {
+		const quiz = expectOk(`#Titolo attaccato
+##Domanda attaccata?
+- [x] Giusta
+- [ ] Sbagliata
+`);
+		expect(quiz.title).toBe('Titolo attaccato');
+		expect(quiz.questions[0].text).toBe('Domanda attaccata?');
+	});
+
+	it('ignora la prosa che NotebookLM mette prima e dopo il blocco', () => {
+		const quiz = expectOk(`Certo! Ecco il quiz che hai chiesto:
+
+\`\`\`markdown
+# Titolo
+## Domanda?
+- [x] Giusta
+- [ ] Sbagliata
+\`\`\`
+
+Fammi sapere se vuoi altre domande.`);
+		expect(quiz.title).toBe('Titolo');
+		expect(quiz.questions).toHaveLength(1);
+	});
+
+	it('regge un collegamento con righe vuote e spazi sparsi', () => {
+		const quiz = expectOk(`##  Collega  
+
+-  Mitosi   ->   Due cellule identiche  
+
+-  Meiosi -> Corredo dimezzato
+
+`);
+		expect(quiz.questions[0].kind).toBe('match');
+		expect(quiz.questions[0].pairs[0]).toEqual({
+			name: 'Mitosi',
+			definition: 'Due cellule identiche'
+		});
+	});
+
+	it('non spezza una domanda se il titolo compare a metà documento', () => {
+		const quiz = expectOk(`# Primo titolo
+## Domanda?
+- [x] Giusta
+- [ ] Sbagliata
+# Secondo titolo ignorato
+## Altra domanda?
+- [x] Giusta
+- [ ] Sbagliata
+`);
+		expect(quiz.title).toBe('Primo titolo');
+		expect(quiz.questions).toHaveLength(2);
+	});
+});

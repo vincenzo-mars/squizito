@@ -1,3 +1,4 @@
+import { DEFAULT_PROMPT_OPTIONS, type PromptOptions } from '$lib/quiz/prompt';
 import { readJson, writeJson } from '$lib/storage/safe';
 import type { QuizMode } from '$lib/storage/types';
 
@@ -8,10 +9,18 @@ type SettingsData = {
 	autoAdvance: boolean;
 	shuffle: boolean;
 	sound: boolean;
+	/** What the NotebookLM prompt on the home page asks for. */
+	prompt: PromptOptions;
 };
 
 function defaults(): SettingsData {
-	return { mode: 'study', autoAdvance: false, shuffle: true, sound: true };
+	return {
+		mode: 'study',
+		autoAdvance: false,
+		shuffle: true,
+		sound: true,
+		prompt: { ...DEFAULT_PROMPT_OPTIONS }
+	};
 }
 
 class Settings {
@@ -20,7 +29,12 @@ class Settings {
 
 	load() {
 		if (this.#loaded) return;
-		this.#data = { ...defaults(), ...readJson<Partial<SettingsData>>(KEY, {}) };
+		const stored = readJson<Partial<SettingsData>>(KEY, {});
+		this.#data = {
+			...defaults(),
+			...stored,
+			prompt: { ...DEFAULT_PROMPT_OPTIONS, ...(stored.prompt ?? {}) }
+		};
 		this.#loaded = true;
 	}
 
@@ -53,6 +67,42 @@ class Settings {
 	}
 	set sound(value: boolean) {
 		this.#data.sound = value;
+		this.#persist();
+	}
+
+	get prompt(): PromptOptions {
+		return this.#data.prompt;
+	}
+
+	get promptMultiple() {
+		return this.#data.prompt.multiple;
+	}
+	set promptMultiple(value: boolean) {
+		this.#data.prompt.multiple = value;
+		this.#persist();
+	}
+
+	get promptTags() {
+		return this.#data.prompt.tags;
+	}
+	set promptTags(value: boolean) {
+		this.#data.prompt.tags = value;
+		this.#persist();
+	}
+
+	get promptReasoning() {
+		return this.#data.prompt.reasoning;
+	}
+	set promptReasoning(value: boolean) {
+		this.#data.prompt.reasoning = value;
+		this.#persist();
+	}
+
+	get promptMatching() {
+		return this.#data.prompt.matching;
+	}
+	set promptMatching(value: boolean) {
+		this.#data.prompt.matching = value;
 		this.#persist();
 	}
 

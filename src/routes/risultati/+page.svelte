@@ -192,23 +192,34 @@
 					{#if question}
 						<article class="wrong surface">
 							<p class="q">{question.text}</p>
-							<p class="line bad">
-								<span class="key">La tua risposta</span>
-								<span class="val">
-									{entry.selected.length
-										? entry.selected.map((i) => question.options[i].text).join(', ')
-										: 'nessuna'}
-								</span>
-							</p>
-							<p class="line good">
-								<span class="key">Corretta</span>
-								<span class="val">
-									{question.options
-										.filter((option) => option.correct)
-										.map((option) => option.text)
-										.join(', ')}
-								</span>
-							</p>
+							{#if question.kind === 'match'}
+								<ul class="pairs">
+									{#each question.pairs as pair, index (index)}
+										<li class:missed={entry.links[index] !== index}>
+											<strong>{pair.name}</strong>
+											<span>{pair.definition}</span>
+										</li>
+									{/each}
+								</ul>
+							{:else}
+								<p class="line bad">
+									<span class="key">La tua risposta</span>
+									<span class="val">
+										{entry.selected.length
+											? entry.selected.map((i) => question.options[i].text).join(', ')
+											: 'nessuna'}
+									</span>
+								</p>
+								<p class="line good">
+									<span class="key">Corretta</span>
+									<span class="val">
+										{question.options
+											.filter((option) => option.correct)
+											.map((option) => option.text)
+											.join(', ')}
+									</span>
+								</p>
+							{/if}
 							{#if question.explanation}
 								<p class="muted explain">{question.explanation}</p>
 							{/if}
@@ -385,6 +396,31 @@
 	.good .key {
 		background: var(--green-soft);
 		color: var(--green-dark);
+	}
+
+	.pairs {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		display: grid;
+		gap: 0.4rem;
+		font-size: 0.9rem;
+	}
+
+	.pairs li {
+		display: grid;
+		gap: 0.05rem;
+		padding-left: 0.7rem;
+		border-left: 3px solid var(--green);
+		line-height: 1.45;
+	}
+
+	.pairs li.missed {
+		border-left-color: var(--red);
+	}
+
+	.pairs strong {
+		color: var(--ink);
 	}
 
 	.explain {

@@ -3,12 +3,23 @@ export type QuestionOption = {
 	correct: boolean;
 };
 
+/** One row of a matching exercise: a short name on the left, its definition on the right. */
+export type MatchPair = {
+	name: string;
+	definition: string;
+};
+
 export type Question = {
 	text: string;
 	tag?: string;
 	explanation?: string;
+	/** `choice` is the classic multiple choice, `match` links names to definitions. */
+	kind: 'choice' | 'match';
+	/** Empty on a `match` question. */
 	options: QuestionOption[];
-	/** True when the question has more than one correct option. */
+	/** Empty on a `choice` question. */
+	pairs: MatchPair[];
+	/** True when a `choice` question has more than one correct option. */
 	multiple: boolean;
 };
 

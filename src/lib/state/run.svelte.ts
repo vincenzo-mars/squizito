@@ -15,6 +15,10 @@ export type RunQuestion = {
 	/** Display order of the option indexes. */
 	optionOrder: number[];
 	selected: number[];
+	/** Matching questions: display order of the names, of the definitions, and the links drawn. */
+	leftOrder: number[];
+	rightOrder: number[];
+	links: (number | null)[];
 	answered: boolean;
 	correct: boolean;
 	points: number;
@@ -158,11 +162,18 @@ class Run {
 			hadWrong: false,
 			comeback: false,
 			questions: order.map((index) => {
-				const positions = quiz.questions[index].options.map((_, i) => i);
+				const question = quiz.questions[index];
+				const positions = question.options.map((_, i) => i);
+				// Both columns are always shuffled: an exercise listed in order would answer itself.
+				const pairs = question.pairs.map((_, i) => i);
+
 				return {
 					index,
 					optionOrder: options.shuffle ? shuffled(positions) : positions,
 					selected: [],
+					leftOrder: question.kind === 'match' ? shuffled(pairs) : [],
+					rightOrder: question.kind === 'match' ? shuffled(pairs) : [],
+					links: question.pairs.map(() => null),
 					answered: false,
 					correct: false,
 					points: 0
@@ -187,7 +198,16 @@ class Run {
 		if (!parsed.ok) return false;
 
 		this.#quiz = parsed.quiz;
-		this.#data = data;
+		// A run stored by an older version has no matching fields: fill them in rather than crash.
+		this.#data = {
+			...data,
+			questions: data.questions.map((entry) => ({
+				...entry,
+				leftOrder: entry.leftOrder ?? [],
+				rightOrder: entry.rightOrder ?? [],
+				links: entry.links ?? []
+			}))
+		};
 		return true;
 	}
 
@@ -210,17 +230,49 @@ class Run {
 		this.#persist();
 	}
 
+	/** Draws a link between a name and a definition, moving it if that definition was taken. */
+	link(name: number, definition: number) {
+		const entry = this.current;
+		const question = this.currentQuestion;
+		if (!entry || !question || question.kind !== 'match') return;
+		if (this.mode === 'study' && entry.answered) return;
+
+		entry.links = entry.links.map((value) => (value === definition ? null : value));
+		entry.links[name] = definition;
+		this.#persist();
+	}
+
+	unlink(name: number) {
+		const entry = this.current;
+		if (!entry || (this.mode === 'study' && entry.answered)) return;
+		entry.links[name] = null;
+		this.#persist();
+	}
+
+	/** True once every name of a matching question has a definition attached. */
+	get linked(): boolean {
+		const entry = this.current;
+		if (!entry) return false;
+		return entry.links.length > 0 && entry.links.every((value) => value !== null);
+	}
+
 	/** Scores the current question. Returns true when the answer was right. */
 	answer(): boolean {
 		const entry = this.current;
 		const question = this.currentQuestion;
 		if (!entry || !question || !this.#data || entry.answered) return false;
 
-		const correctOptions = question.options
-			.map((option, index) => (option.correct ? index : -1))
-			.filter((index) => index >= 0);
+		if (question.kind === 'match') {
+			// All or nothing, like a multiple-answer question.
+			entry.correct = entry.links.every((value, index) => value === index);
+		} else {
+			const correctOptions = question.options
+				.map((option, index) => (option.correct ? index : -1))
+				.filter((index) => index >= 0);
 
-		entry.correct = sameSet(entry.selected, correctOptions);
+			entry.correct = sameSet(entry.selected, correctOptions);
+		}
+
 		entry.answered = true;
 
 		if (entry.correct) {

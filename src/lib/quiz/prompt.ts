@@ -1,25 +1,143 @@
-/** Prompt to paste into NotebookLM so it answers in the syntax the parser expects. */
-export const NOTEBOOKLM_PROMPT = `Genera un quiz a risposta multipla basato esclusivamente sulle fonti di questo notebook.
-Rispondi SOLO con un blocco Markdown in questo formato esatto, senza testo prima o dopo:
+export type PromptOptions = {
+	/** Allow questions with more than one correct option. */
+	multiple: boolean;
+	/** Ask for a `Tag:` line, which the app shows on the question cards. */
+	tags: boolean;
+	/** Push for reasoning and application instead of pure recall. */
+	reasoning: boolean;
+	/** Ask for match-the-definition exercises alongside the questions. */
+	matching: boolean;
+};
 
-# <titolo del quiz>
-> <una riga di descrizione>
+export const DEFAULT_PROMPT_OPTIONS: PromptOptions = {
+	multiple: true,
+	tags: false,
+	reasoning: false,
+	matching: false
+};
 
-## <domanda>
-- [ ] <opzione sbagliata>
-- [x] <opzione corretta>
-- [ ] <opzione sbagliata>
-> <spiegazione breve della risposta corretta>
+function formatBlock(options: PromptOptions): string {
+	const lines = [
+		'# <tematica> - <capitolo o argomento>',
+		'> <una riga di descrizione>',
+		'',
+		'## <domanda>'
+	];
 
-Regole:
-- 15 domande, ognuna con 4 opzioni.
-- Marca con [x] le opzioni corrette e con [ ] quelle sbagliate.
-- Se una domanda ha più risposte corrette, metti più [x]: al massimo 3 domande di questo tipo.
-- Le opzioni sbagliate devono essere plausibili, non assurde.
-- Ordine delle opzioni casuale: la corretta non sempre nella stessa posizione.
-- Nessuna domanda che dipenda dal contesto ("come detto sopra", "nella pagina 3").
-- Una riga "> spiegazione" per ogni domanda, massimo 200 caratteri.
-- Non aggiungere numerazione, commenti o note fuori dal formato.`;
+	if (options.tags) lines.push('Tag: <argomento della domanda>');
+
+	lines.push(
+		'- [ ] <opzione sbagliata>',
+		'- [x] <opzione corretta>',
+		'- [ ] <opzione sbagliata>',
+		'> <spiegazione esaustiva della risposta corretta>'
+	);
+
+	if (options.matching) {
+		lines.push(
+			'',
+			'## <consegna del collegamento>',
+			'- <termine breve> -> <definizione estesa>',
+			'- <termine breve> -> <definizione estesa>',
+			'- <termine breve> -> <definizione estesa>',
+			'> <nota sulla distinzione fra i termini>'
+		);
+	}
+
+	return lines.join('\n');
+}
+
+function rules(options: PromptOptions): string[] {
+	const list = [
+		'Il titolo deve dire di cosa parla il test: nome della materia o della tematica, poi il capitolo o l\'argomento specifico, separati da un trattino. Per esempio "Diritto privato - Capitolo 4: le obbligazioni" oppure "Storia romana - La crisi della Repubblica". Niente titoli generici come "Quiz" o "Test di verifica".',
+		'La riga di descrizione dice in una frase cosa copre il test.',
+		'Marca sempre con [x] le opzioni corrette e con [ ] quelle sbagliate.'
+	];
+
+	if (options.multiple) {
+		list.push(
+			'Se non ti chiedo altrove qualcosa di diverso, ogni domanda ha 4 opzioni.',
+			"Alterna domande con una sola risposta corretta e domande con più risposte corrette: in queste ultime metti più [x]. Non c'è un limite a quante domande possono essere a risposta multipla, ma devono restare una minoranza rispetto a quelle secche.",
+			'Nelle domande a risposta multipla non annunciare quante sono le corrette: la formulazione resta neutra ("Quali fra le seguenti...").'
+		);
+	} else {
+		list.push(
+			'Se non ti chiedo altrove qualcosa di diverso, ogni domanda ha 4 opzioni.',
+			'Ogni domanda ha una sola risposta corretta: esattamente una [x] per domanda, mai due.'
+		);
+	}
+
+	if (options.tags) {
+		list.push(
+			'Ogni domanda ha una riga "Tag:" subito sotto il testo, con una o due parole che dicono di quale argomento del capitolo si tratta. Riusa gli stessi tag fra domande sullo stesso argomento.'
+		);
+	}
+
+	if (options.reasoning) {
+		list.push(
+			'Preferisci domande di ragionamento e applicazione (un caso concreto, una conseguenza, un confronto) invece di domande che chiedono solo di ricordare una definizione o una data.'
+		);
+	}
+
+	if (options.matching) {
+		list.push(
+			'Inserisci anche esercizi di collegamento fra termine e definizione, con lo stesso "##" della consegna e poi una riga per coppia nel formato "- termine -> definizione". Non usare [x] in questi blocchi.',
+			"Ogni esercizio di collegamento ha da 3 a 5 coppie, tutte corrette: è l'app a mescolarle. A sinistra della freccia il termine breve, a destra la definizione estesa, mai il contrario.",
+			"I termini di uno stesso esercizio di collegamento devono appartenere allo stesso ambito e essere confondibili fra loro, altrimenti l'abbinamento è ovvio.",
+			'Non usare la freccia "->" dentro il testo di una definizione, e non numerare le coppie.',
+			'Alterna gli esercizi di collegamento alle normali domande, senza metterli tutti in fondo.'
+		);
+	}
+
+	list.push(
+		'Le opzioni sbagliate devono essere plausibili e pertinenti al contenuto, non assurde: chi non ha studiato deve poterci cadere.',
+		'Le opzioni della stessa domanda devono avere lunghezza e livello di dettaglio simili, altrimenti la corretta si riconosce dalla forma invece che dal contenuto.',
+		'Ordine delle opzioni casuale: la corretta non sempre nella stessa posizione.',
+		'Ogni domanda si regge da sola: nessun riferimento al contesto ("come detto sopra", "nella pagina 3", "secondo l\'autore").',
+		'La riga "> spiegazione" è obbligatoria e deve essere esaustiva: perché la risposta corretta è corretta e, dove serve a capire, perché le altre non lo sono. Meglio lunga che vaga.',
+		'Copri punti diversi delle fonti: niente due domande sullo stesso concetto.',
+		'Non inventare niente che non sia nelle fonti.',
+		'Non aggiungere numerazione, titoli di sezione, introduzioni, commenti o note fuori dal formato.'
+	);
+
+	return list;
+}
+
+/** Full prompt to paste into NotebookLM, built from the options picked on the home page. */
+export function buildPrompt(options: PromptOptions): string {
+	return [
+		'Genera un quiz a risposta multipla basato esclusivamente sulle fonti di questo notebook.',
+		'Rispondi SOLO con un blocco Markdown in questo formato esatto, senza testo prima o dopo:',
+		'',
+		formatBlock(options),
+		'',
+		'Regole:',
+		...rules(options).map((rule) => `- ${rule}`)
+	].join('\n');
+}
+
+/** Compact version, meant to be appended to a request the user has already written. */
+export function buildSnippet(options: PromptOptions): string {
+	const tail = [
+		'Il titolo deve essere la materia o tematica seguita dal capitolo o argomento, non un generico "Quiz".',
+		'Marca sempre con [x] le corrette e con [ ] le sbagliate.',
+		options.multiple
+			? 'Alterna domande secche e domande con più risposte corrette (più [x] nella stessa domanda), tenendo le multiple in minoranza.'
+			: 'Una sola risposta corretta per domanda: esattamente una [x].',
+		options.tags ? 'Aggiungi una riga "Tag:" sotto ogni domanda con l\'argomento.' : '',
+		options.reasoning ? 'Preferisci domande di ragionamento, non di sola memoria.' : '',
+		options.matching
+			? 'Inserisci anche esercizi di collegamento: stessa "##" per la consegna, poi una riga per coppia come "- termine -> definizione", da 3 a 5 coppie, senza [x].'
+			: '',
+		'Le sbagliate devono essere plausibili e lunghe quanto la corretta, in ordine casuale.',
+		'La riga > è obbligatoria e deve spiegare per esteso perché la risposta è quella.',
+		'Niente numerazione, commenti o note fuori dal formato.'
+	]
+		.filter(Boolean)
+		.join(' ');
+
+	return `Formatta la risposta esattamente così, senza testo prima o dopo:\n\n${formatBlock(options)}\n\n${tail}`;
+}
 
 export const SYNTAX_EXAMPLE = `# Titolo del quiz
 > Descrizione breve, una riga. Opzionale.
@@ -35,18 +153,10 @@ Tag: linguaggi
 - [x] Rust
 - [x] TypeScript
 - [ ] Python
-> Due [x] significa risposta multipla.`;
+> Due [x] significa risposta multipla.
 
-/** Compact formatting rules to paste at the end of any NotebookLM prompt. */
-export const FORMAT_SNIPPET = `Formatta la risposta esattamente così, senza testo prima o dopo:
-
-# Titolo del quiz
-> Descrizione in una riga
-
-## Testo della domanda
-- [ ] opzione sbagliata
-- [x] opzione corretta
-- [ ] opzione sbagliata
-> Spiegazione breve della risposta corretta
-
-Marca con [x] le opzioni corrette e con [ ] quelle sbagliate. Più [x] nella stessa domanda significa risposta multipla. Niente numerazione, niente commenti fuori dal formato.`;
+## Collega ogni linguaggio al suo ambito
+- Rust -> Sistemi e programmi dove contano memoria e prestazioni
+- SQL -> Interrogazione di basi di dati relazionali
+- CSS -> Presentazione e impaginazione di documenti web
+> Le righe con la freccia diventano un esercizio di collegamento.`;
