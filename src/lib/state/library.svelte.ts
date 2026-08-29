@@ -1,7 +1,8 @@
 import { hashSource } from '$lib/quiz/hash';
-import type { Quiz } from '$lib/quiz/types';
+import type { Question, Quiz } from '$lib/quiz/types';
+import { applyAnswer, createState, questionKey } from '$lib/review/schedule';
 import { readJson, writeJson } from '$lib/storage/safe';
-import type { Attempt, BackupFile, LibraryData, StoredQuiz } from '$lib/storage/types';
+import type { Attempt, BackupFile, LibraryData, ReviewState, StoredQuiz } from '$lib/storage/types';
 
 const KEY = 'library';
 
@@ -78,6 +79,30 @@ class Library {
 		this.#persist();
 	}
 
+	/** Review state of a single question inside a quiz, if it has ever been answered. */
+	stateFor(quizId: string, question: Question): ReviewState | undefined {
+		return this.find(quizId)?.review?.[questionKey(question.text)];
+	}
+
+	states(quizId: string, questions: Question[]): (ReviewState | undefined)[] {
+		const review = this.find(quizId)?.review;
+		if (!review) return questions.map(() => undefined);
+		return questions.map((question) => review[questionKey(question.text)]);
+	}
+
+	/** Advances the spaced-repetition state of a question. Called on every answer, every run. */
+	recordAnswer(quizId: string, question: Question, correct: boolean, now = Date.now()) {
+		const quiz = this.find(quizId);
+		if (!quiz) return;
+
+		const key = questionKey(question.text);
+		const review = (quiz.review ??= {});
+		const current = review[key] ?? createState(question, now);
+
+		review[key] = applyAnswer({ ...current, text: question.text, tag: question.tag }, correct, now);
+		this.#persist();
+	}
+
 	addAttempt(id: string, attempt: Attempt) {
 		const quiz = this.find(id);
 		if (!quiz) return;
@@ -99,14 +124,18 @@ class Library {
 	}
 
 	toBackup(): BackupFile {
-		return { app: 'quizzo', version: 1, exportedAt: Date.now(), quizzes: this.#data.quizzes };
+		return { app: 'squizito', version: 1, exportedAt: Date.now(), quizzes: this.#data.quizzes };
 	}
 
 	/** Merges a backup into the library: known quizzes keep their attempts, new ones are added. */
 	merge(backup: unknown): { quizzes: number; attempts: number } {
-		const file = backup as Partial<BackupFile>;
-		if (!file || file.app !== 'quizzo' || !Array.isArray(file.quizzes)) {
-			throw new Error('Il file non è un backup di Quizzo.');
+		const file = backup as Partial<BackupFile> & { app?: string };
+		if (
+			!file ||
+			(file.app !== 'squizito' && file.app !== 'quizzo') ||
+			!Array.isArray(file.quizzes)
+		) {
+			throw new Error('Il file non è un backup di Squizito.');
 		}
 
 		let quizzes = 0;

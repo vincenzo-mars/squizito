@@ -235,6 +235,8 @@ class Run {
 			this.#data.hadWrong = true;
 		}
 
+		library.recordAnswer(this.#data.quizId, question, entry.correct);
+
 		this.#persist();
 		return entry.correct;
 	}

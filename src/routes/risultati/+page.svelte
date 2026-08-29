@@ -8,12 +8,14 @@
 	import { formatDuration, percentage } from '$lib/format';
 	import type { Badge } from '$lib/quiz/badges';
 	import { maxScore } from '$lib/quiz/scoring';
+	import { describeDue } from '$lib/review/schedule';
 	import { library } from '$lib/state/library.svelte';
 	import { run } from '$lib/state/run.svelte';
 	import { settings } from '$lib/state/settings.svelte';
 	import { sfx } from '$lib/audio/sfx';
 
 	let ready = $state(false);
+	let now = $state(Date.now());
 	let badges = $state<Badge[]>([]);
 	let previousBest = $state<number | null>(null);
 
@@ -24,6 +26,27 @@
 	let attempt = $derived(run.attempt);
 	let wrong = $derived(run.entries.filter((entry) => !entry.correct));
 	let stored = $derived(run.quizId ? library.find(run.quizId) : undefined);
+
+	/** How the answers just given moved the review schedule of each question. */
+	let schedule = $derived.by(() => {
+		const quizId = run.quizId;
+		if (!quizId || !ready) return [];
+
+		const buckets: { label: string; count: number; due: number }[] = [];
+		for (const entry of run.entries) {
+			const question = run.questionAt(entry);
+			if (!question) continue;
+			const state = library.stateFor(quizId, question);
+			if (!state) continue;
+
+			const label = describeDue(state.due, now);
+			const bucket = buckets.find((item) => item.label === label);
+			if (bucket) bucket.count += 1;
+			else buckets.push({ label, count: 1, due: state.due });
+		}
+
+		return buckets.sort((a, b) => a.due - b.due);
+	});
 
 	onMount(() => {
 		settings.load();
@@ -139,6 +162,25 @@
 						<BadgeChip {badge} delay={index * 120} />
 					{/each}
 				</div>
+			</section>
+		{/if}
+
+		{#if schedule.length}
+			<section class="stack">
+				<h2>Quando le rivedi</h2>
+				<div class="pills">
+					{#each schedule as bucket (bucket.label)}
+						<span class="pill" class:today={bucket.label === 'oggi'}>
+							{bucket.count}
+							{bucket.count === 1 ? 'domanda' : 'domande'}
+							{bucket.label}
+						</span>
+					{/each}
+				</div>
+				<p class="muted note-left">
+					Le sbagliate tornano subito in coda di ripasso, le altre si allontanano man mano che le
+					azzecchi. Trovi il ripasso nella pagina del quiz.
+				</p>
 			</section>
 		{/if}
 
@@ -266,6 +308,30 @@
 		background: var(--green-soft);
 		border-radius: 999px;
 		padding: 0.35rem 1rem;
+	}
+
+	.pills {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+	}
+
+	.pill {
+		font-size: 0.82rem;
+		font-weight: 800;
+		padding: 0.25rem 0.7rem;
+		border-radius: 999px;
+		background: var(--bg-tint);
+		color: var(--ink-soft);
+	}
+
+	.pill.today {
+		background: var(--orange-soft);
+		color: var(--orange-dark);
+	}
+
+	.note-left {
+		font-size: 0.85rem;
 	}
 
 	.badges {

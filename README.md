@@ -1,14 +1,14 @@
-# Quizzo
+# Squizito
 
 Trasforma un blocco di domande generate da NotebookLM in un test con punti, serie e badge.
 Frontend statico, nessun backend: quiz e risultati vivono nel `localStorage` del browser.
 
-Live: https://vincenzo-mars.github.io/quizzo/
+Live: https://vincenzo-mars.github.io/squizito/
 
 ## Come si usa
 
 1. Copia il prompt qui sotto e dallo in pasto a NotebookLM.
-2. Incolla la sua risposta nella home di Quizzo.
+2. Incolla la sua risposta nella home di Squizito.
 3. Rispondi, accumula punti, riprova le sbagliate.
 
 ## Sintassi delle domande
@@ -87,6 +87,25 @@ Lo stesso prompt è copiabile dalla home con un bottone.
 Modalità **Studio**: correzione e spiegazione subito dopo ogni risposta.
 Modalità **Esame**: si risponde a tutte, la correzione arriva alla fine.
 
+## Ripasso
+
+Ogni domanda di ogni test ha una sua scheda di ripetizione dilazionata, con un SM-2 semplificato:
+
+- risposta giusta: la domanda si allontana (1 giorno, 3 giorni, poi intervallo × ease, ease 1.3-2.8);
+- risposta sbagliata: torna a oggi, l'ease scende di 0.2 e il contatore delle cadute sale.
+
+Il ripasso è **per singolo test**, non trasversale alla libreria: lo trovi nella pagina del quiz,
+con la padronanza complessiva, quante domande sono da rivedere e il bottone che costruisce una
+sessione con le più deboli (sbagliate, mai viste, poi le meno solide).
+
+Non c'è nessun cancello temporale: puoi ripetere lo stesso test quante volte vuoi, anche più volte
+nello stesso giorno, e ogni risposta aggiorna la scheda. L'unica cosa che richiede che la domanda
+sia effettivamente scaduta è l'allungamento dell'intervallo, altrimenti rispondere in anticipo
+gonfierebbe il calendario senza un vero sforzo di richiamo dietro.
+
+L'identità di una domanda è l'hash del suo testo normalizzato, quindi ricaricare lo stesso quiz
+non azzera la storia.
+
 ## Dati
 
 Quiz, tentativi ed errori stanno solo nel browser che li ha creati: nessun account, nessuna
@@ -111,6 +130,6 @@ npm run dev
 ## Deploy
 
 `.github/workflows/deploy.yml` builda e pubblica su GitHub Pages a ogni push su `main`.
-Il base path arriva dalla variabile `BASE_PATH` (`/quizzo` in CI, vuoto in locale).
+Il base path arriva dalla variabile `BASE_PATH` (`/squizito` in CI, vuoto in locale).
 
 Prima del primo deploy: **Settings → Pages → Source: GitHub Actions**.

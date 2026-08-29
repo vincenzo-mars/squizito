@@ -7,6 +7,7 @@
 	import Toggle from '$lib/components/Toggle.svelte';
 	import { formatDate, percentage } from '$lib/format';
 	import { parseQuiz } from '$lib/quiz/parser';
+	import { describeDue, isDue, masteryLevel, masteryPercent, priority } from '$lib/review/schedule';
 	import type { Quiz } from '$lib/quiz/types';
 	import type { StoredQuiz } from '$lib/storage/types';
 	import { library } from '$lib/state/library.svelte';
@@ -21,6 +22,48 @@
 	let problem = $state('');
 
 	let best = $derived(stored ? library.best(stored.id) : undefined);
+
+	/** Frozen at mount so the derived values below stay pure across a session. */
+	let now = $state(Date.now());
+
+	let states = $derived(
+		stored && quiz
+			? library.states(stored.id, quiz.questions)
+			: ([] as ReturnType<typeof library.states>)
+	);
+	let mastery = $derived(masteryPercent(states));
+	let dueCount = $derived(
+		states.filter((state) => state && state.seen > 0 && isDue(state, now)).length
+	);
+	let unseenCount = $derived(states.filter((state) => !state || !state.seen).length);
+	let strongCount = $derived(states.filter((state) => masteryLevel(state) >= 4).length);
+
+	/** Question indexes ordered by how much they need work: wrong, never seen, then the shakiest. */
+	let ranked = $derived(
+		states
+			.map((state, index) => ({ index, state, score: priority(state, now) }))
+			.sort((a, b) => b.score - a.score)
+	);
+
+	/** What the schedule says is pending: never seen, or due today. */
+	let dueIndexes = $derived(
+		ranked
+			.filter((item) => !item.state?.seen || isDue(item.state, now))
+			.slice(0, 20)
+			.map((item) => item.index)
+	);
+
+	/** Fallback when nothing is pending: the weakest ones can always be drilled again. */
+	let weakIndexes = $derived(
+		ranked.slice(0, Math.min(10, ranked.length)).map((item) => item.index)
+	);
+
+	let nextDue = $derived(
+		states
+			.filter((state) => state && state.seen > 0 && !isDue(state, now))
+			.map((state) => state!.due)
+			.sort((a, b) => a - b)[0]
+	);
 
 	onMount(() => {
 		library.load();
@@ -50,6 +93,18 @@
 
 	function setMode(mode: 'study' | 'exam') {
 		settings.mode = mode;
+	}
+
+	function startReview(indexes: number[]) {
+		if (!stored || !quiz || !indexes.length) return;
+		run.start(
+			stored,
+			quiz,
+			{ mode: settings.mode, autoAdvance: settings.autoAdvance, shuffle: settings.shuffle },
+			indexes
+		);
+		sfx.select();
+		goto(resolve('/test'));
 	}
 
 	function start() {
@@ -83,6 +138,45 @@
 				{/if}
 			</div>
 		</section>
+
+		{#if quiz && !problem}
+			<section class="surface review">
+				<div class="review-head">
+					<div>
+						<p class="eyebrow">Ripasso</p>
+						<h2>Padronanza {mastery}%</h2>
+					</div>
+					<div class="gauge" aria-hidden="true">
+						{#each states as state, index (index)}
+							<span class="tick" data-level={masteryLevel(state)}></span>
+						{/each}
+					</div>
+				</div>
+
+				<div class="pills">
+					{#if dueCount}<span class="pill warm">{dueCount} da rivedere oggi</span>{/if}
+					{#if unseenCount}<span class="pill">{unseenCount} mai viste</span>{/if}
+					{#if strongCount}<span class="pill good">{strongCount} consolidate</span>{/if}
+					{#if nextDue}<span class="pill">prossimo ripasso {describeDue(nextDue, now)}</span>{/if}
+				</div>
+
+				{#if dueIndexes.length}
+					<Button onclick={() => startReview(dueIndexes)} full>
+						{dueIndexes.length === 1
+							? 'Ripassa la domanda da rivedere'
+							: `Ripassa le ${dueIndexes.length} domande da rivedere`}
+					</Button>
+				{:else}
+					<Button variant="ghost" onclick={() => startReview(weakIndexes)} full>
+						Niente in scadenza: ripassa comunque le {weakIndexes.length} più deboli
+					</Button>
+				{/if}
+				<p class="muted hint">
+					Puoi ripassare quante volte vuoi, anche più volte nello stesso giorno: ogni risposta
+					aggiorna la scheda della domanda.
+				</p>
+			</section>
+		{/if}
 
 		{#if problem}
 			<section class="surface stack">
@@ -139,7 +233,7 @@
 				</div>
 				<div class="questions">
 					{#each quiz.questions as question, index (index)}
-						<QuestionCard {question} number={index + 1} />
+						<QuestionCard {question} number={index + 1} mastery={masteryLevel(states[index])} />
 					{/each}
 				</div>
 			</section>
@@ -182,7 +276,7 @@
 
 	.gold {
 		background: var(--yellow);
-		color: #4a3800;
+		color: #543f00;
 	}
 
 	.segmented {
@@ -236,5 +330,61 @@
 	.questions {
 		display: grid;
 		gap: 0.75rem;
+	}
+
+	.review {
+		display: grid;
+		gap: 0.9rem;
+	}
+
+	.review-head {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		justify-content: space-between;
+	}
+
+	.gauge {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 3px;
+	}
+
+	.tick {
+		width: 10px;
+		height: 22px;
+		border-radius: 3px;
+		background: var(--bg-tint);
+	}
+
+	.tick[data-level='1'] {
+		background: #ffd9b8;
+	}
+	.tick[data-level='2'] {
+		background: #ffb877;
+	}
+	.tick[data-level='3'] {
+		background: var(--orange);
+	}
+	.tick[data-level='4'] {
+		background: #9bd96b;
+	}
+	.tick[data-level='5'] {
+		background: var(--green);
+	}
+
+	.warm {
+		background: var(--orange-soft);
+		color: var(--orange-dark);
+	}
+
+	.good {
+		background: var(--green-soft);
+		color: var(--green-dark);
+	}
+
+	.hint {
+		font-size: 0.85rem;
 	}
 </style>

@@ -1,7 +1,20 @@
 <script lang="ts">
 	import type { Question } from '$lib/quiz/types';
 
-	let { question, number }: { question: Question; number: number } = $props();
+	let {
+		question,
+		number,
+		mastery = 0
+	}: { question: Question; number: number; mastery?: number } = $props();
+
+	const LABELS = [
+		'mai vista',
+		'da consolidare',
+		'in costruzione',
+		'quasi',
+		'solida',
+		'consolidata'
+	];
 
 	let expanded = $state(false);
 	let long = $derived(question.text.length > 160);
@@ -9,6 +22,12 @@
 
 <article class="card" style="animation-delay: {Math.min(number, 12) * 35}ms">
 	<span class="number">{number}</span>
+	<span class="mastery" title="Padronanza: {LABELS[mastery]}">
+		{#each [1, 2, 3, 4, 5] as step (step)}
+			<span class="dot" class:on={step <= mastery}></span>
+		{/each}
+		<span class="sr-only">Padronanza: {LABELS[mastery]}</span>
+	</span>
 	<div class="body">
 		<p class="text" class:clamped={long && !expanded}>{question.text}</p>
 		{#if long}
@@ -42,6 +61,26 @@
 	.card:hover {
 		transform: translateY(-2px);
 		border-color: var(--line-strong);
+	}
+
+	.mastery {
+		order: 3;
+		flex: none;
+		display: grid;
+		gap: 3px;
+		align-content: start;
+		margin-top: 4px;
+	}
+
+	.dot {
+		width: 7px;
+		height: 7px;
+		border-radius: 50%;
+		background: var(--bg-tint);
+	}
+
+	.dot.on {
+		background: var(--orange);
 	}
 
 	.number {
@@ -102,7 +141,7 @@
 		letter-spacing: 0.06em;
 		padding: 0.15rem 0.55rem;
 		border-radius: 999px;
-		background: var(--purple);
+		background: var(--plum);
 		color: #fff;
 	}
 
