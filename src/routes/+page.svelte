@@ -7,7 +7,8 @@
 	import QuizCard from '$lib/components/QuizCard.svelte';
 	import { DEMO_SOURCE } from '$lib/quiz/demo';
 	import { parseQuiz } from '$lib/quiz/parser';
-	import { FORMAT_SNIPPET, NOTEBOOKLM_PROMPT, SYNTAX_EXAMPLE } from '$lib/quiz/prompt';
+	import { buildPrompt, buildSnippet, SYNTAX_EXAMPLE } from '$lib/quiz/prompt';
+	import Toggle from '$lib/components/Toggle.svelte';
 	import type { ParseIssue } from '$lib/quiz/types';
 	import { downloadBackup, readBackupFile } from '$lib/storage/backup';
 	import type { StoredQuiz } from '$lib/storage/types';
@@ -21,6 +22,7 @@
 	let errors = $state<ParseIssue[]>([]);
 	let notice = $state('');
 	let pasteOpen = $state(false);
+	let guideOpen = $state(false);
 	let copied = $state<'' | 'prompt' | 'format'>('');
 	let fileInput = $state<HTMLInputElement>();
 
@@ -32,6 +34,9 @@
 		'- [ ] Risposta sbagliata'
 	].join('\n');
 
+	let prompt = $derived(buildPrompt(settings.prompt));
+	let snippet = $derived(buildSnippet(settings.prompt));
+
 	let renameTarget = $state<StoredQuiz | null>(null);
 	let renameValue = $state('');
 	let deleteTarget = $state<StoredQuiz | null>(null);
@@ -41,6 +46,8 @@
 		settings.load();
 		sfx.enabled = settings.sound;
 		pasteOpen = library.count === 0;
+		// First visit: the format is the thing to read before anything else.
+		guideOpen = library.count === 0;
 		ready = true;
 	});
 
@@ -116,6 +123,58 @@
 		</ol>
 	</section>
 
+	<details class="surface guide" bind:open={guideOpen}>
+		<summary>
+			<span>Come si scrivono le domande</span>
+			<span class="muted summary-hint">formato, prompt per NotebookLM e opzioni</span>
+		</summary>
+
+		<div class="stack details-body">
+			<p class="muted">
+				Il parser è tollerante: numerazione, code fence, grassetto e testo fuori formato non danno
+				fastidio. Serve solo che ogni domanda inizi con <code>##</code> e abbia almeno due opzioni,
+				di cui almeno una marcata <code>[x]</code>.
+			</p>
+
+			<div class="options">
+				<p class="eyebrow">Cosa deve generare NotebookLM</p>
+				<div class="options-grid">
+					<Toggle
+						bind:checked={settings.promptMultiple}
+						label="Domande a risposta multipla"
+						hint="Mescola domande secche e domande con più risposte corrette"
+					/>
+					<Toggle
+						bind:checked={settings.promptTags}
+						label="Tag per argomento"
+						hint="Una riga Tag: sotto ogni domanda, mostrata sulle card"
+					/>
+					<Toggle
+						bind:checked={settings.promptReasoning}
+						label="Domande di ragionamento"
+						hint="Casi e conseguenze invece di sole definizioni"
+					/>
+					<Toggle
+						bind:checked={settings.promptMatching}
+						label="Collegamenti termine-definizione"
+						hint="Esercizi in cui unisci ogni nome alla sua definizione"
+					/>
+				</div>
+			</div>
+
+			<div class="prompt-head">
+				<p class="eyebrow">Prompt da dare a NotebookLM</p>
+				<Button size="sm" onclick={() => copy(prompt, 'prompt')}>
+					{copied === 'prompt' ? 'Copiato' : 'Copia il prompt'}
+				</Button>
+			</div>
+			<pre>{prompt}</pre>
+
+			<p class="muted">Come viene il Markdown che ti restituisce:</p>
+			<pre>{SYNTAX_EXAMPLE}</pre>
+		</div>
+	</details>
+
 	{#if ready && library.count > 0}
 		<section class="stack">
 			<div class="row">
@@ -173,35 +232,18 @@
 			<aside class="snippet">
 				<div class="snippet-head">
 					<p class="eyebrow">Da aggiungere al prompt di NotebookLM</p>
-					<Button variant="blue" size="sm" onclick={() => copy(FORMAT_SNIPPET, 'format')}>
+					<Button variant="blue" size="sm" onclick={() => copy(snippet, 'format')}>
 						{copied === 'format' ? 'Copiato' : 'Copia'}
 					</Button>
 				</div>
-				<pre>{FORMAT_SNIPPET}</pre>
+				<pre>{snippet}</pre>
 				<p class="muted snippet-note">
-					Incollalo in coda alla richiesta che fai a NotebookLM: senza queste righe tende a
-					rispondere in prosa e il quiz non si carica.
+					Versione corta, da incollare in coda a una richiesta che hai già scritto. Segue le stesse
+					opzioni scelte qui sopra.
 				</p>
 			</aside>
 		</section>
 	{/if}
-
-	<details class="surface">
-		<summary>Come si scrivono le domande</summary>
-		<div class="stack details-body">
-			<p class="muted">
-				Il parser è tollerante: numerazione, code fence, grassetto e testo fuori formato non danno
-				fastidio. Serve solo che ogni domanda inizi con <code>##</code> e abbia almeno due opzioni,
-				di cui almeno una marcata <code>[x]</code>.
-			</p>
-			<pre>{SYNTAX_EXAMPLE}</pre>
-			<div class="row">
-				<Button variant="blue" size="sm" onclick={() => copy(NOTEBOOKLM_PROMPT, 'prompt')}>
-					{copied === 'prompt' ? 'Copiato' : 'Copia il prompt per NotebookLM'}
-				</Button>
-			</div>
-		</div>
-	</details>
 
 	{#if ready}
 		<section class="row backup">
@@ -352,10 +394,59 @@
 	summary {
 		cursor: pointer;
 		font-weight: 800;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.5rem;
+	}
+
+	.summary-hint {
+		font-weight: 700;
+		font-size: 0.82rem;
+	}
+
+	.guide {
+		border-color: var(--orange);
+		background: linear-gradient(var(--orange-soft), var(--surface) 120px);
+	}
+
+	.options {
+		display: grid;
+		gap: 0.6rem;
+		padding: 0.9rem 1rem;
+		border: 2px solid var(--line);
+		border-radius: var(--radius);
+		background: var(--surface);
+	}
+
+	.options-grid {
+		display: grid;
+		gap: 0.25rem;
+		grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	}
+
+	.prompt-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+
+	.prompt-head :global(.btn) {
+		flex: none;
+		white-space: nowrap;
 	}
 
 	.details-body {
 		margin-top: 1rem;
+	}
+
+	/* The prompt is long prose: wrap it instead of forcing a horizontal scroll. */
+	.guide pre {
+		white-space: pre-wrap;
+		max-height: 340px;
+		overflow: auto;
 	}
 
 	pre {
