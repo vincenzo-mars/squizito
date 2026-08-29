@@ -52,7 +52,7 @@
 	}
 
 	input:checked + .track {
-		background: var(--green);
+		background: var(--orange);
 	}
 
 	input:checked + .track .thumb {
@@ -60,7 +60,7 @@
 	}
 
 	input:focus-visible + .track {
-		outline: 3px solid var(--blue);
+		outline: 3px solid var(--orange);
 		outline-offset: 3px;
 	}
 
