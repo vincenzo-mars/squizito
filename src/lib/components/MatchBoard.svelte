@@ -35,6 +35,7 @@
 	let pickedDefinition = $state<number | null>(null);
 
 	let nameOf = $derived((definition: number) => links.findIndex((value) => value === definition));
+	let missed = $derived(links.some((value, index) => value !== index));
 	let slotOf = $derived((name: number) => leftOrder.indexOf(name));
 
 	function colorFor(name: number): string {
@@ -121,7 +122,7 @@
 	</div>
 </div>
 
-{#if revealed}
+{#if revealed && missed}
 	<ul class="solution">
 		{#each leftOrder as name (name)}
 			{#if links[name] !== name}
@@ -132,7 +133,7 @@
 			{/if}
 		{/each}
 	</ul>
-{:else}
+{:else if !revealed}
 	<p class="hint muted">
 		{#if pickedName !== null}
 			Ora scegli la definizione da collegare.
@@ -147,7 +148,8 @@
 <style>
 	.board {
 		display: grid;
-		grid-template-columns: minmax(120px, 0.75fr) 1.6fr;
+		/* The names column follows the width available, the definitions take whatever is left. */
+		grid-template-columns: clamp(110px, 26%, 240px) minmax(0, 1fr);
 		gap: 0.7rem;
 		align-items: start;
 	}
@@ -182,6 +184,7 @@
 	.chip {
 		padding: 0.7rem 0.8rem;
 		align-items: center;
+		min-width: 0;
 	}
 
 	.card {
@@ -265,9 +268,10 @@
 		color: var(--green-dark);
 	}
 
-	@media (max-width: 720px) {
+	/* Too narrow for two columns: the names become a row of chips above the definitions. */
+	@media (max-width: 560px) {
 		.board {
-			grid-template-columns: 1fr;
+			grid-template-columns: minmax(0, 1fr);
 		}
 
 		.names {
@@ -278,6 +282,7 @@
 
 		.names .chip {
 			width: auto;
+			flex: 0 1 auto;
 		}
 	}
 </style>

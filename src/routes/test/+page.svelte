@@ -307,7 +307,6 @@
 	}
 
 	.feedback {
-		max-width: var(--reading);
 		border-radius: var(--radius-lg);
 		border: 2px solid;
 		padding: 1rem 1.25rem;
