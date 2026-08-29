@@ -2,7 +2,15 @@ import { hashSource } from '$lib/quiz/hash';
 import type { Question, Quiz } from '$lib/quiz/types';
 import { applyAnswer, createState, questionKey } from '$lib/review/schedule';
 import { readJson, writeJson } from '$lib/storage/safe';
-import type { Attempt, BackupFile, LibraryData, ReviewState, StoredQuiz } from '$lib/storage/types';
+import type {
+	Attempt,
+	BackupFile,
+	LibraryData,
+	ProfileData,
+	ReviewState,
+	StoredQuiz
+} from '$lib/storage/types';
+import { profile } from './profile.svelte';
 
 const KEY = 'library';
 
@@ -124,7 +132,13 @@ class Library {
 	}
 
 	toBackup(): BackupFile {
-		return { app: 'squizito', version: 1, exportedAt: Date.now(), quizzes: this.#data.quizzes };
+		return {
+			app: 'squizito',
+			version: 2,
+			exportedAt: Date.now(),
+			quizzes: this.#data.quizzes,
+			profile: profile.snapshot
+		};
 	}
 
 	/** Merges a backup into the library: known quizzes keep their attempts, new ones are added. */
@@ -156,6 +170,10 @@ class Library {
 				attempts++;
 			}
 			existing.attempts.sort((a, b) => a.at - b.at);
+		}
+
+		if (file.profile && typeof file.profile === 'object') {
+			profile.merge(file.profile as ProfileData);
 		}
 
 		this.#persist();
