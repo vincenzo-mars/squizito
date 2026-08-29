@@ -2,6 +2,7 @@
 	import { onDestroy, onMount, tick } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
+	import AnswerBurst from '$lib/components/AnswerBurst.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import OptionButton from '$lib/components/OptionButton.svelte';
 	import ScoreBar from '$lib/components/ScoreBar.svelte';
@@ -11,9 +12,10 @@
 	import { sfx } from '$lib/audio/sfx';
 
 	let ready = $state(false);
-	let burst = $state<{ id: number; points: number } | null>(null);
+	let burst = $state<{ id: number; kind: 'correct' | 'wrong'; points: number } | null>(null);
 	let feedbackEl = $state<HTMLElement>();
 	let timer: ReturnType<typeof setTimeout> | null = null;
+	let burstTimer: ReturnType<typeof setTimeout> | null = null;
 
 	let entry = $derived(run.current);
 	let question = $derived(run.currentQuestion);
@@ -44,6 +46,7 @@
 
 	onDestroy(() => {
 		if (timer) clearTimeout(timer);
+		if (burstTimer) clearTimeout(burstTimer);
 	});
 
 	function optionState(index: number): 'idle' | 'correct' | 'wrong' | 'missed' {
@@ -81,8 +84,16 @@
 		await tick();
 		feedbackEl?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
+		const id = Date.now();
+		burst = { id, kind: current.correct ? 'correct' : 'wrong', points: current.points };
+
+		// The overlay is a one-shot animation: drop it from the DOM once it has played out.
+		if (burstTimer) clearTimeout(burstTimer);
+		burstTimer = setTimeout(() => {
+			if (burst?.id === id) burst = null;
+		}, 1100);
+
 		if (current.correct) {
-			burst = { id: Date.now(), points: current.points };
 			if (run.streak >= 3) sfx.streak(run.streak);
 			else sfx.correct();
 		} else {
@@ -202,7 +213,10 @@
 
 		{#if burst}
 			{#key burst.id}
-				<span class="burst">+{burst.points}</span>
+				<AnswerBurst kind={burst.kind} />
+				{#if burst.kind === 'correct'}
+					<span class="burst">+{burst.points}</span>
+				{/if}
 			{/key}
 		{/if}
 	{/if}
