@@ -316,9 +316,9 @@
 	}
 
 	.segment.active {
-		background: var(--green-soft);
-		border-color: var(--green);
-		box-shadow: 0 var(--depth) 0 var(--green-dark);
+		background: var(--orange-soft);
+		border-color: var(--orange);
+		box-shadow: 0 var(--depth) 0 var(--orange-dark);
 	}
 
 	.toggles {

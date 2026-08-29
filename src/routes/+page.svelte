@@ -287,7 +287,7 @@
 	}
 
 	.steps strong {
-		color: var(--green-dark);
+		color: var(--orange-dark);
 	}
 
 	h2 {
