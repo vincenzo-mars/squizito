@@ -16,7 +16,7 @@
 		color: string;
 	};
 
-	const COLORS = ['#58cc02', '#1cb0f6', '#ffc800', '#ce82ff', '#ff4b4b'];
+	const COLORS = ['#ff8c42', '#ffc233', '#56c02b', '#b06fb0', '#2fa8e0'];
 
 	onMount(() => {
 		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;

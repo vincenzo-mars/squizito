@@ -254,7 +254,7 @@
 		letter-spacing: 0.07em;
 		padding: 0.15rem 0.6rem;
 		border-radius: 999px;
-		background: var(--purple);
+		background: var(--plum);
 		color: #fff;
 	}
 

@@ -131,7 +131,7 @@
 
 	.gold {
 		background: var(--yellow);
-		color: #4a3800;
+		color: #543f00;
 	}
 
 	.meta {

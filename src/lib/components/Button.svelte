@@ -37,8 +37,8 @@
 
 <style>
 	.btn {
-		--btn-bg: var(--green);
-		--btn-edge: var(--green-dark);
+		--btn-bg: var(--orange);
+		--btn-edge: var(--orange-dark);
 		--btn-ink: #fff;
 
 		display: inline-flex;
@@ -101,7 +101,7 @@
 	.yellow {
 		--btn-bg: var(--yellow);
 		--btn-edge: var(--yellow-dark);
-		--btn-ink: #4a3800;
+		--btn-ink: #543f00;
 	}
 
 	.danger {

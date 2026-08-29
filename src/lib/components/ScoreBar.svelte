@@ -77,7 +77,7 @@
 	.fill {
 		height: 100%;
 		border-radius: 999px;
-		background: linear-gradient(90deg, var(--green), #8ee04a);
+		background: linear-gradient(90deg, var(--orange), #ffc233);
 		transition: width 420ms var(--ease);
 	}
 
@@ -98,7 +98,7 @@
 
 	.streak {
 		background: var(--yellow);
-		color: #4a3800;
+		color: #543f00;
 		padding: 0.1rem 0.55rem;
 		border-radius: 999px;
 		animation: bump 320ms var(--ease);

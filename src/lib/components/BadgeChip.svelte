@@ -22,7 +22,7 @@
 		background: var(--yellow);
 		border: 2px solid var(--yellow-dark);
 		box-shadow: 0 3px 0 var(--yellow-dark);
-		color: #4a3800;
+		color: #543f00;
 		animation: pop 420ms var(--ease) both;
 	}
 
