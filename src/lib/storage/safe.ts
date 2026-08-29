@@ -1,6 +1,27 @@
 import { browser } from '$app/environment';
 
-export const NAMESPACE = 'quizzo:v1';
+export const NAMESPACE = 'squizito:v1';
+const LEGACY_NAMESPACE = 'quizzo:v1';
+
+/** The app was called Quizzo before: carry over whatever the old keys still hold. */
+function migrateLegacy() {
+	if (!browser || migrated) return;
+	migrated = true;
+	try {
+		for (const key of Object.keys(localStorage)) {
+			if (!key.startsWith(`${LEGACY_NAMESPACE}:`)) continue;
+			const renamed = `${NAMESPACE}:${key.slice(LEGACY_NAMESPACE.length + 1)}`;
+			if (localStorage.getItem(renamed) === null) {
+				localStorage.setItem(renamed, localStorage.getItem(key) ?? '');
+			}
+			localStorage.removeItem(key);
+		}
+	} catch {
+		// Storage unavailable: nothing to migrate, the app starts empty.
+	}
+}
+
+let migrated = false;
 
 export class StorageFullError extends Error {
 	constructor() {
@@ -18,6 +39,7 @@ function isQuotaError(error: unknown): boolean {
 
 export function readJson<T>(key: string, fallback: T): T {
 	if (!browser) return fallback;
+	migrateLegacy();
 	try {
 		const raw = localStorage.getItem(`${NAMESPACE}:${key}`);
 		if (!raw) return fallback;

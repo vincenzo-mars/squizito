@@ -32,8 +32,8 @@ jobs:
 
       - run: npm run build
         env:
-          # Project page: the site lives at /quizzo, not at the domain root.
-          BASE_PATH: /quizzo
+          # Project page: the site lives at /squizito, not at the domain root.
+          BASE_PATH: /squizito
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

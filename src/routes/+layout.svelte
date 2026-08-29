@@ -7,15 +7,18 @@
 </script>
 
 <svelte:head>
-	<title>Quizzo</title>
+	<title>Squizito</title>
 	<link rel="icon" href={favicon} />
-	<meta name="description" content="Carica un quiz generato da NotebookLM e mettiti alla prova." />
+	<meta
+		name="description"
+		content="Carica un quiz generato da NotebookLM, mettiti alla prova e ripassa quello che sbagli."
+	/>
 </svelte:head>
 
 <header>
 	<a class="brand" href={resolve('/')}>
-		<span class="mark" aria-hidden="true">?</span>
-		<span class="name">Quizzo</span>
+		<span class="mark" aria-hidden="true">😋🧠</span>
+		<span class="name">Squizito</span>
 	</a>
 </header>
 
@@ -37,17 +40,17 @@
 	}
 
 	.mark {
-		display: grid;
-		place-items: center;
-		width: 38px;
-		height: 38px;
-		border-radius: 12px;
-		background: var(--green);
-		color: #fff;
-		font-weight: 900;
-		font-size: 1.25rem;
-		box-shadow: 0 3px 0 var(--green-dark);
-		transform: rotate(-6deg);
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
+		padding: 0.25rem 0.5rem;
+		border-radius: 14px;
+		background: var(--orange-soft);
+		border: 2px solid var(--orange);
+		font-size: 1.1rem;
+		line-height: 1;
+		box-shadow: 0 3px 0 var(--orange-dark);
+		transform: rotate(-4deg);
 	}
 
 	.name {

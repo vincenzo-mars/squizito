@@ -15,7 +15,7 @@ export function downloadBackup(backup: BackupFile) {
 	const link = document.createElement('a');
 
 	link.href = url;
-	link.download = `quizzo-backup-${stamp(new Date())}.json`;
+	link.download = `squizito-backup-${stamp(new Date())}.json`;
 	link.click();
 
 	URL.revokeObjectURL(url);

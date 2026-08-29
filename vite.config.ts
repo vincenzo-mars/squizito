@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config';
 import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
 
-/** Empty in dev and preview, `/quizzo` in the GitHub Pages workflow. */
+/** Empty in dev and preview, `/squizito` in the GitHub Pages workflow. */
 const basePath = (process.env.BASE_PATH ?? '') as '' | `/${string}`;
 
 export default defineConfig({

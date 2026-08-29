@@ -104,7 +104,7 @@
 		<p class="eyebrow">Quiz da NotebookLM</p>
 		<h1>Trasforma i tuoi appunti in un test.</h1>
 		<p class="lead muted">
-			Fatti generare le domande da NotebookLM nel formato qui sotto, incollale, e Quizzo le
+			Fatti generare le domande da NotebookLM nel formato qui sotto, incollale, e Squizito le
 			trasforma in un test con punti, serie e badge. Tutto resta nel tuo browser: nessun account,
 			nessun server.
 		</p>

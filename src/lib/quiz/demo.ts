@@ -1,5 +1,5 @@
 export const DEMO_SOURCE = `# Sistema solare
-> Un quiz di prova per vedere come funziona Quizzo.
+> Un quiz di prova per vedere come funziona Squizito.
 
 ## Qual è il pianeta più vicino al Sole?
 Tag: pianeti
