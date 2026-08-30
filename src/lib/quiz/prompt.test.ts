@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPrompt, DEFAULT_PROMPT_OPTIONS, type PromptOptions } from './prompt';
+import { buildPrompt, DEFAULT_PROMPT_OPTIONS, isBatched, type PromptOptions } from './prompt';
 
 const base: PromptOptions = {
 	...DEFAULT_PROMPT_OPTIONS,
@@ -12,7 +12,8 @@ describe('buildPrompt', () => {
 		const prompt = buildPrompt({ ...base, count: '12' });
 
 		expect(prompt).toContain('Genera esattamente 12 domande.');
-		expect(prompt).toContain('in un file "Imparare - Capitolo 2.md"');
+		expect(prompt).toContain('una nuova nota intitolata "Imparare - Capitolo 2"');
+		expect(prompt).toContain('mai fra le fonti');
 		expect(prompt).not.toContain('blocchi');
 	});
 
@@ -20,17 +21,16 @@ describe('buildPrompt', () => {
 		const prompt = buildPrompt({ ...base, count: 'tante' });
 
 		expect(prompt).not.toContain('Genera esattamente');
-		expect(prompt).toContain('in un file "Imparare - Capitolo 2.md"');
+		expect(prompt).toContain('una nuova nota intitolata "Imparare - Capitolo 2"');
 	});
 
-	it('splits long quizzes into cumulative rounds ending in a FINALE file', () => {
+	it('splits long quizzes into cumulative notes ending in a FINALE one', () => {
 		const prompt = buildPrompt({ ...base, count: '50' });
 
-		expect(prompt).toContain('Procedi a blocchi da 15 domande, ognuno cumulativo:');
-		expect(prompt).toContain('"Imparare - Capitolo 2 - 1.md" con le prime 15 domande');
-		expect(prompt).toContain(
-			'"Imparare - Capitolo 2 - FINALE.md" e contiene tutte e 50 le domande'
-		);
+		expect(prompt).toContain('Procedi a blocchi da 15 domande, ognuno cumulativo');
+		expect(prompt).toContain('mai fra le fonti');
+		expect(prompt).toContain('una nuova nota intitolata "Imparare - Capitolo 2 - 1"');
+		expect(prompt).toContain('"Imparare - Capitolo 2 - FINALE" e contiene tutte e 50 le domande');
 		expect(prompt).toContain('ricopiale identiche');
 		expect(prompt).toContain('"blocco <n>: <domande finora> su 50"');
 		expect(prompt).not.toContain('rispondi in chat con lo stesso identico contenuto');
@@ -44,5 +44,11 @@ describe('buildPrompt', () => {
 			expect(prompt).toContain('> Corretta: "<testo identico dell\'opzione corretta>"');
 			expect(prompt).toContain('la marcatura è sbagliata, correggila');
 		}
+	});
+
+	it('flags the batched mode only past the round size', () => {
+		expect(isBatched({ ...base, count: '15' })).toBe(false);
+		expect(isBatched({ ...base, count: '16' })).toBe(true);
+		expect(isBatched({ ...base, count: '' })).toBe(false);
 	});
 });
