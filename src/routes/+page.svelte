@@ -25,6 +25,12 @@
 	let guideOpen = $state(false);
 	let copied = $state<'' | 'prompt' | 'format'>('');
 	let fileInput = $state<HTMLInputElement>();
+	let quizInput = $state<HTMLInputElement>();
+	let dragging = $state(false);
+	let pasteFallback = $state(false);
+
+	/** Guard against someone dropping a whole book: a quiz is a handful of KB. */
+	const MAX_FILE_BYTES = 2 * 1024 * 1024;
 
 	const PLACEHOLDER = [
 		'# Titolo del quiz',
@@ -68,6 +74,27 @@
 		} catch (error) {
 			notice = error instanceof Error ? error.message : 'Non è stato possibile salvare il quiz.';
 		}
+	}
+
+	async function loadFile(file: File | undefined) {
+		dragging = false;
+		if (!file) return;
+
+		if (file.size > MAX_FILE_BYTES) {
+			errors = [{ line: 0, message: 'Il file supera i 2 MB: non sembra un quiz.' }];
+			return;
+		}
+
+		try {
+			load(await file.text());
+		} catch {
+			errors = [{ line: 0, message: 'Non riesco a leggere il file: prova a incollare il testo.' }];
+		}
+	}
+
+	function onDrop(event: DragEvent) {
+		event.preventDefault();
+		void loadFile(event.dataTransfer?.files?.[0]);
 	}
 
 	function open(quiz: StoredQuiz) {
@@ -209,9 +236,48 @@
 
 	{#if pasteOpen || !ready || library.count === 0}
 		<section class="surface stack">
-			<h2>Incolla il quiz</h2>
-			<textarea bind:value={source} rows="10" spellcheck="false" placeholder={PLACEHOLDER}
-			></textarea>
+			<h2>Carica il quiz</h2>
+
+			<button
+				type="button"
+				class="drop"
+				class:dragging
+				onclick={() => quizInput?.click()}
+				ondragover={(event) => {
+					event.preventDefault();
+					dragging = true;
+				}}
+				ondragleave={() => (dragging = false)}
+				ondrop={onDrop}
+			>
+				<span class="drop-icon" aria-hidden="true">📄</span>
+				<span class="drop-title">Trascina qui il file .md</span>
+				<span class="drop-hint muted">
+					quello che NotebookLM salva fra le fonti, oppure scegline uno dal disco
+				</span>
+			</button>
+
+			<input
+				bind:this={quizInput}
+				class="sr-only"
+				type="file"
+				accept=".md,.markdown,.txt,text/markdown,text/plain"
+				onchange={(event) => {
+					const input = event.currentTarget;
+					const file = input.files?.[0];
+					input.value = '';
+					void loadFile(file);
+				}}
+			/>
+
+			{#if pasteFallback}
+				<textarea bind:value={source} rows="10" spellcheck="false" placeholder={PLACEHOLDER}
+				></textarea>
+			{:else}
+				<button class="link" onclick={() => (pasteFallback = true)}>
+					oppure incolla il testo a mano
+				</button>
+			{/if}
 
 			{#if errors.length}
 				<div class="errors">
@@ -225,7 +291,9 @@
 			{/if}
 
 			<div class="row">
-				<Button onclick={() => load(source)} disabled={!source.trim()}>Carica quiz</Button>
+				{#if pasteFallback}
+					<Button onclick={() => load(source)} disabled={!source.trim()}>Carica quiz</Button>
+				{/if}
 				<Button variant="ghost" onclick={() => load(DEMO_SOURCE)}>Prova il quiz demo</Button>
 			</div>
 
@@ -376,6 +444,58 @@
 		outline: 3px solid var(--blue);
 		outline-offset: 1px;
 		border-color: var(--blue);
+	}
+
+	.drop {
+		display: grid;
+		justify-items: center;
+		gap: 0.35rem;
+		width: 100%;
+		padding: clamp(1.5rem, 5vw, 2.5rem) 1.25rem;
+		border: 3px dashed var(--line-strong);
+		border-radius: var(--radius-lg);
+		background: var(--bg-tint);
+		color: var(--ink);
+		cursor: pointer;
+		text-align: center;
+		transition:
+			border-color var(--speed) var(--ease),
+			background var(--speed) var(--ease),
+			transform var(--speed) var(--ease);
+	}
+
+	.drop:hover,
+	.drop.dragging {
+		border-color: var(--orange);
+		background: var(--orange-soft);
+		transform: translateY(-2px);
+	}
+
+	.drop-icon {
+		font-size: 2rem;
+		line-height: 1;
+	}
+
+	.drop-title {
+		font-weight: 800;
+		font-size: 1.05rem;
+	}
+
+	.drop-hint {
+		font-size: 0.85rem;
+		max-width: 34ch;
+	}
+
+	.link {
+		justify-self: center;
+		border: none;
+		background: none;
+		padding: 0;
+		font-size: 0.88rem;
+		font-weight: 700;
+		color: var(--orange-dark);
+		text-decoration: underline;
+		cursor: pointer;
 	}
 
 	.errors {
