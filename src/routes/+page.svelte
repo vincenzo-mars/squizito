@@ -50,7 +50,6 @@
 		library.load();
 		settings.load();
 		sfx.enabled = settings.sound;
-		pasteOpen = library.count === 0;
 		// First visit: the format is the thing to read before anything else.
 		guideOpen = library.count === 0;
 		ready = true;
@@ -67,6 +66,7 @@
 		}
 
 		try {
+			pasteOpen = false;
 			const stored = library.save(text, result.quiz);
 			selection.select(stored.id);
 			goto(resolve('/quiz'));
@@ -177,8 +177,18 @@
 						<span>Capitolo o argomento</span>
 						<input bind:value={settings.promptChapter} placeholder="Capitolo 4 - Le obbligazioni" />
 					</label>
+					<label class="field">
+						<span>Quante domande</span>
+						<input
+							bind:value={settings.promptCount}
+							inputmode="numeric"
+							placeholder="lo decide NotebookLM"
+						/>
+					</label>
 				</div>
-				<p class="muted field-note">Lasciali vuoti per un quiz su tutte le fonti del notebook.</p>
+				<p class="muted field-note">
+					Lascia vuoti fonte e capitolo per un quiz su tutte le fonti del notebook.
+				</p>
 
 				<div class="options-grid">
 					<Toggle
@@ -226,8 +236,8 @@
 					{library.count === 1 ? 'quiz salvato' : 'quiz salvati'}
 				</span>
 				<div class="spacer"></div>
-				<Button variant="blue" size="sm" onclick={() => (pasteOpen = !pasteOpen)}>
-					{pasteOpen ? 'Chiudi' : 'Carica nuovo quiz'}
+				<Button variant="blue" size="sm" onclick={() => (pasteOpen = true)}>
+					Carica nuovo quiz
 				</Button>
 			</div>
 
@@ -249,66 +259,14 @@
 		</section>
 	{/if}
 
-	{#if pasteOpen || !ready || library.count === 0}
-		<section class="surface stack">
-			<h2>Carica il quiz</h2>
-
-			<button
-				type="button"
-				class="drop"
-				class:dragging
-				onclick={() => quizInput?.click()}
-				ondragover={(event) => {
-					event.preventDefault();
-					dragging = true;
-				}}
-				ondragleave={() => (dragging = false)}
-				ondrop={onDrop}
-			>
-				<span class="drop-icon" aria-hidden="true">📄</span>
-				<span class="drop-title">Trascina qui il file .md</span>
-				<span class="drop-hint muted">
-					quello che NotebookLM salva fra le fonti, oppure scegline uno dal disco
-				</span>
-			</button>
-
-			<input
-				bind:this={quizInput}
-				class="sr-only"
-				type="file"
-				accept=".md,.markdown,.txt,text/markdown,text/plain"
-				onchange={(event) => {
-					const input = event.currentTarget;
-					const file = input.files?.[0];
-					input.value = '';
-					void loadFile(file);
-				}}
-			/>
-
-			{#if pasteFallback}
-				<textarea bind:value={source} rows="10" spellcheck="false" placeholder={PLACEHOLDER}
-				></textarea>
-			{:else}
-				<button class="link" onclick={() => (pasteFallback = true)}>
-					oppure incolla il testo a mano
-				</button>
-			{/if}
-
-			{#if errors.length}
-				<div class="errors">
-					<strong>Il formato non torna:</strong>
-					<ul>
-						{#each errors as issue, i (i)}
-							<li>{issue.line ? `Riga ${issue.line}: ` : ''}{issue.message}</li>
-						{/each}
-					</ul>
-				</div>
-			{/if}
-
+	{#if ready && library.count === 0}
+		<section class="surface empty">
+			<h2>Nessun quiz, per ora</h2>
+			<p class="muted">
+				Copia il prompt qui sopra, dallo a NotebookLM, poi carica qui il file che ti restituisce.
+			</p>
 			<div class="row">
-				{#if pasteFallback}
-					<Button onclick={() => load(source)} disabled={!source.trim()}>Carica quiz</Button>
-				{/if}
+				<Button size="lg" onclick={() => (pasteOpen = true)}>Carica il tuo primo quiz</Button>
 				<Button variant="ghost" onclick={() => load(DEMO_SOURCE)}>Prova il quiz demo</Button>
 			</div>
 		</section>
@@ -338,6 +296,75 @@
 		<p class="notice">{notice}</p>
 	{/if}
 </main>
+
+<Dialog
+	open={pasteOpen}
+	title="Carica il quiz"
+	size="lg"
+	onclose={() => {
+		pasteOpen = false;
+		errors = [];
+	}}
+>
+	<button
+		type="button"
+		class="drop"
+		class:dragging
+		onclick={() => quizInput?.click()}
+		ondragover={(event) => {
+			event.preventDefault();
+			dragging = true;
+		}}
+		ondragleave={() => (dragging = false)}
+		ondrop={onDrop}
+	>
+		<span class="drop-icon" aria-hidden="true">📄</span>
+		<span class="drop-title">Trascina qui il file .md</span>
+		<span class="drop-hint muted">
+			quello che NotebookLM salva fra le fonti, oppure scegline uno dal disco
+		</span>
+	</button>
+
+	<input
+		bind:this={quizInput}
+		class="sr-only"
+		type="file"
+		accept=".md,.markdown,.txt,text/markdown,text/plain"
+		onchange={(event) => {
+			const input = event.currentTarget;
+			const file = input.files?.[0];
+			input.value = '';
+			void loadFile(file);
+		}}
+	/>
+
+	{#if pasteFallback}
+		<textarea bind:value={source} rows="10" spellcheck="false" placeholder={PLACEHOLDER}></textarea>
+	{:else}
+		<button class="link" onclick={() => (pasteFallback = true)}>
+			oppure incolla il testo a mano
+		</button>
+	{/if}
+
+	{#if errors.length}
+		<div class="errors">
+			<strong>Il formato non torna:</strong>
+			<ul>
+				{#each errors as issue, i (i)}
+					<li>{issue.line ? `Riga ${issue.line}: ` : ''}{issue.message}</li>
+				{/each}
+			</ul>
+		</div>
+	{/if}
+
+	{#snippet actions()}
+		<Button variant="ghost" size="sm" onclick={() => (pasteOpen = false)}>Chiudi</Button>
+		<Button variant="ghost" size="sm" onclick={() => load(DEMO_SOURCE)}>Prova il quiz demo</Button>
+		{#if pasteFallback}
+			<Button size="sm" onclick={() => load(source)} disabled={!source.trim()}>Carica quiz</Button>
+		{/if}
+	{/snippet}
+</Dialog>
 
 <Dialog open={renameTarget !== null} title="Rinomina quiz" onclose={() => (renameTarget = null)}>
 	<label class="field">
@@ -596,6 +623,12 @@
 		border-radius: 6px;
 		padding: 0.05rem 0.3rem;
 		font-size: 0.85em;
+	}
+
+	.empty {
+		display: grid;
+		gap: 0.75rem;
+		justify-items: start;
 	}
 
 	.backup {
