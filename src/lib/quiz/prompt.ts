@@ -79,6 +79,7 @@ function rules(options: PromptOptions): string[] {
 		'Distrattori plausibili, lunghi quanto la corretta, in ordine casuale.',
 		'Ogni domanda si regge da sola: niente rimandi a pagine, paragrafi o "come sopra".',
 		'La riga "> " è obbligatoria: perché la corretta è corretta e, se serve, perché le altre no.',
+		"Prima di rispondere rileggi ogni domanda: la [x] deve stare sull'opzione descritta dalla spiegazione. Se le due non coincidono, correggi la [x].",
 		'Copri punti diversi, non ripetere lo stesso concetto, non uscire dalle fonti.'
 	];
 
