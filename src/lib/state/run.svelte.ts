@@ -147,11 +147,13 @@ class Run {
 	start(stored: StoredQuiz, quiz: Quiz, options: RunOptions, subset?: number[]) {
 		const indexes = subset?.length ? [...subset] : quiz.questions.map((_, index) => index);
 		const order = options.shuffle ? shuffled(indexes) : indexes;
+		// A review that happens to cover every question is a full run: it counts for the record.
+		const partial = indexes.length < quiz.questions.length;
 
 		this.#quiz = quiz;
 		this.#data = {
 			quizId: stored.id,
-			partial: Boolean(subset?.length),
+			partial,
 			mode: options.mode,
 			autoAdvance: options.autoAdvance,
 			startedAt: Date.now(),
