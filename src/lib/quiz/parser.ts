@@ -10,6 +10,12 @@ const QUOTE = /^\s*>\s?(.*)$/;
 const RULE = /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/;
 const PAIR = /^\s*[-*+•–—]\s*(.+?)\s*(?:->|→|=>|-->|›)\s*(.*)$/;
 const NUMBERING = /^\d+\s*[.)\]]\s*/;
+/**
+ * `> Corretta: "testo". resto` — the redundancy that makes a mismarked [x] detectable.
+ * Quoted first, because quotes delimit the answer exactly; otherwise up to the first stop.
+ */
+const CITED_QUOTED = /^\s*corrett[ao]\s*:\s*[«"“'](.+?)[»"”']\s*[.;]?\s*/i;
+const CITED_PLAIN = /^\s*corrett[ao]\s*:\s*([^.;]+)\s*[.;]\s*/i;
 
 /** Strips the inline markdown NotebookLM tends to sprinkle around, so the UI renders plain text. */
 function clean(raw: string): string {
@@ -187,10 +193,14 @@ export function parseQuiz(source: string): ParseResult {
 			continue;
 		}
 
+		const joined = draft.explanation.join(' ');
+		const cited = joined.match(CITED_QUOTED) ?? joined.match(CITED_PLAIN);
+
 		questions.push({
 			text: draft.text,
 			tag: draft.tag,
-			explanation: draft.explanation.length ? draft.explanation.join(' ') : undefined,
+			explanation: cited ? joined.slice(cited[0].length).trim() || undefined : joined || undefined,
+			citedAnswer: cited ? clean(cited[1]) : undefined,
 			kind: 'choice',
 			options: draft.options,
 			pairs: [],

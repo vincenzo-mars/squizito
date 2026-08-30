@@ -6,6 +6,7 @@
 	import QuestionCard from '$lib/components/QuestionCard.svelte';
 	import Toggle from '$lib/components/Toggle.svelte';
 	import { formatDate, percentage } from '$lib/format';
+	import { coherenceIssues, type CoherenceIssue } from '$lib/quiz/coherence';
 	import { parseQuiz } from '$lib/quiz/parser';
 	import { describeDue, isDue, masteryLevel, masteryPercent, priority } from '$lib/review/schedule';
 	import type { Quiz } from '$lib/quiz/types';
@@ -20,6 +21,7 @@
 	let stored = $state<StoredQuiz | null>(null);
 	let quiz = $state<Quiz | null>(null);
 	let problem = $state('');
+	let issues = $state<CoherenceIssue[]>([]);
 
 	let best = $derived(stored ? library.best(stored.id) : undefined);
 
@@ -81,6 +83,7 @@
 			problem = parsed.errors[0]?.message ?? 'Il quiz salvato non è più leggibile.';
 		} else {
 			quiz = parsed.quiz;
+			issues = coherenceIssues(parsed.quiz);
 		}
 
 		stored = entry;
@@ -138,6 +141,32 @@
 				{/if}
 			</div>
 		</section>
+
+		{#if issues.length}
+			<section class="surface warn">
+				<h2>
+					{issues.length === 1
+						? 'Una domanda ha la risposta corretta segnata male'
+						: `${issues.length} domande hanno la risposta corretta segnata male`}
+				</h2>
+				<p class="muted">
+					In queste domande la spiegazione dichiara una risposta diversa da quella marcata nel file.
+					L'errore è nel Markdown generato, non nel test: correggi il file e ricaricalo, oppure
+					rigenera il quiz.
+				</p>
+				<ul>
+					{#each issues as issue (issue.number)}
+						<li>
+							<strong>#{issue.number}</strong>
+							{issue.text}
+							<span class="fix">
+								segnata <em>{issue.marked}</em>, la spiegazione dice <em>{issue.cited}</em>
+							</span>
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
 
 		{#if quiz && !problem}
 			<section class="surface review">
@@ -217,8 +246,8 @@
 					/>
 					<Toggle
 						bind:checked={settings.shuffle}
-						label="Mescola"
-						hint="Ordine casuale di domande e opzioni"
+						label="Mescola le domande"
+						hint="Le opzioni sono sempre in ordine casuale"
 					/>
 					<Toggle bind:checked={settings.sound} label="Audio" hint="Suoni su risposte e serie" />
 				</div>
@@ -330,6 +359,33 @@
 	.questions {
 		display: grid;
 		gap: 0.75rem;
+	}
+
+	.warn {
+		display: grid;
+		gap: 0.6rem;
+		border-color: var(--red);
+		background: var(--red-soft);
+	}
+
+	.warn h2 {
+		font-size: 1.1rem;
+	}
+
+	.warn ul {
+		margin: 0;
+		padding-left: 1.1rem;
+		display: grid;
+		gap: 0.5rem;
+		font-size: 0.9rem;
+		max-height: 260px;
+		overflow: auto;
+	}
+
+	.fix {
+		display: block;
+		color: var(--ink-soft);
+		font-size: 0.85rem;
 	}
 
 	.review {
