@@ -120,30 +120,6 @@ export function buildPrompt(options: PromptOptions): string {
 	].join('\n');
 }
 
-/** Compact version, meant to be appended to a request the user has already written. */
-export function buildSnippet(options: PromptOptions): string {
-	const tail = [
-		"Salva sempre il risultato come nuova fonte del notebook, in un file .md che contenga solo il quiz, così posso scaricarlo e caricarlo in un'app esterna.",
-		'Il titolo deve essere la materia o tematica seguita dal capitolo o argomento, non un generico "Quiz".',
-		'Marca sempre con [x] le corrette e con [ ] le sbagliate.',
-		options.multiple
-			? 'Alterna domande secche e domande con più risposte corrette (più [x] nella stessa domanda), tenendo le multiple in minoranza.'
-			: 'Una sola risposta corretta per domanda: esattamente una [x].',
-		options.tags ? 'Aggiungi una riga "Tag:" sotto ogni domanda con l\'argomento.' : '',
-		options.reasoning ? 'Preferisci domande di ragionamento, non di sola memoria.' : '',
-		options.matching
-			? 'Inserisci anche esercizi di collegamento: stessa "##" per la consegna, poi una riga per coppia come "- termine -> definizione", da 3 a 5 coppie, senza [x].'
-			: '',
-		'Le sbagliate devono essere plausibili e lunghe quanto la corretta, in ordine casuale.',
-		'La riga > è obbligatoria e deve spiegare per esteso perché la risposta è quella.',
-		'Niente numerazione, commenti o note fuori dal formato.'
-	]
-		.filter(Boolean)
-		.join(' ');
-
-	return `Formatta la risposta esattamente così, senza testo prima o dopo:\n\n${formatBlock(options)}\n\n${tail}`;
-}
-
 export const SYNTAX_EXAMPLE = `# Titolo del quiz
 > Descrizione breve, una riga. Opzionale.
 

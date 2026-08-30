@@ -7,7 +7,7 @@
 	import QuizCard from '$lib/components/QuizCard.svelte';
 	import { DEMO_SOURCE } from '$lib/quiz/demo';
 	import { parseQuiz } from '$lib/quiz/parser';
-	import { buildPrompt, buildSnippet, SYNTAX_EXAMPLE } from '$lib/quiz/prompt';
+	import { buildPrompt, SYNTAX_EXAMPLE } from '$lib/quiz/prompt';
 	import Toggle from '$lib/components/Toggle.svelte';
 	import type { ParseIssue } from '$lib/quiz/types';
 	import { downloadBackup, readBackupFile } from '$lib/storage/backup';
@@ -23,7 +23,7 @@
 	let notice = $state('');
 	let pasteOpen = $state(false);
 	let guideOpen = $state(false);
-	let copied = $state<'' | 'prompt' | 'format'>('');
+	let copied = $state(false);
 	let fileInput = $state<HTMLInputElement>();
 	let quizInput = $state<HTMLInputElement>();
 	let dragging = $state(false);
@@ -41,7 +41,6 @@
 	].join('\n');
 
 	let prompt = $derived(buildPrompt(settings.prompt));
-	let snippet = $derived(buildSnippet(settings.prompt));
 
 	let renameTarget = $state<StoredQuiz | null>(null);
 	let renameValue = $state('');
@@ -112,10 +111,10 @@
 		deleteTarget = null;
 	}
 
-	async function copy(text: string, which: 'prompt' | 'format') {
+	async function copy(text: string) {
 		await navigator.clipboard.writeText(text);
-		copied = which;
-		setTimeout(() => (copied = ''), 2000);
+		copied = true;
+		setTimeout(() => (copied = false), 2000);
 	}
 
 	async function importBackup(event: Event) {
@@ -138,14 +137,14 @@
 		<p class="eyebrow">Quiz da NotebookLM</p>
 		<h1>Trasforma i tuoi appunti in un test.</h1>
 		<p class="lead muted">
-			Fatti generare le domande da NotebookLM nel formato qui sotto, incollale, e Squizito le
-			trasforma in un test con punti, serie e badge. Tutto resta nel tuo browser: nessun account,
-			nessun server.
+			Fatti generare le domande da NotebookLM nel formato qui sotto, scarica il file che salva fra
+			le fonti, e Squizito lo trasforma in un test con punti, serie e badge. Tutto resta nel tuo
+			browser: nessun account, nessun server.
 		</p>
 
 		<ol class="steps">
 			<li><strong>1.</strong> Copia il prompt e dallo in pasto a NotebookLM</li>
-			<li><strong>2.</strong> Incolla qui la sua risposta</li>
+			<li><strong>2.</strong> Trascina qui il file .md che ti restituisce</li>
 			<li><strong>3.</strong> Rispondi, accumula punti, riprova le sbagliate</li>
 		</ol>
 	</section>
@@ -191,8 +190,8 @@
 
 			<div class="prompt-head">
 				<p class="eyebrow">Prompt da dare a NotebookLM</p>
-				<Button size="sm" onclick={() => copy(prompt, 'prompt')}>
-					{copied === 'prompt' ? 'Copiato' : 'Copia il prompt'}
+				<Button size="sm" onclick={() => copy(prompt)}>
+					{copied ? 'Copiato' : 'Copia il prompt'}
 				</Button>
 			</div>
 			<pre>{prompt}</pre>
@@ -296,20 +295,6 @@
 				{/if}
 				<Button variant="ghost" onclick={() => load(DEMO_SOURCE)}>Prova il quiz demo</Button>
 			</div>
-
-			<aside class="snippet">
-				<div class="snippet-head">
-					<p class="eyebrow">Da aggiungere al prompt di NotebookLM</p>
-					<Button variant="blue" size="sm" onclick={() => copy(snippet, 'format')}>
-						{copied === 'format' ? 'Copiato' : 'Copia'}
-					</Button>
-				</div>
-				<pre>{snippet}</pre>
-				<p class="muted snippet-note">
-					Versione corta, da incollare in coda a una richiesta che hai già scritto. Segue le stesse
-					opzioni scelte qui sopra.
-				</p>
-			</aside>
 		</section>
 	{/if}
 
@@ -584,41 +569,6 @@
 		border-radius: 6px;
 		padding: 0.05rem 0.3rem;
 		font-size: 0.85em;
-	}
-
-	.snippet {
-		display: grid;
-		gap: 0.6rem;
-		padding: 0.9rem 1rem;
-		border: 2px dashed var(--line-strong);
-		border-radius: var(--radius);
-		background: var(--blue-soft);
-	}
-
-	.snippet-head {
-		display: flex;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: 0.75rem;
-		justify-content: space-between;
-	}
-
-	.snippet-head :global(.btn) {
-		flex: none;
-		white-space: nowrap;
-	}
-
-	.snippet pre {
-		background: rgb(255 255 255 / 0.7);
-		font-size: 0.78rem;
-		padding: 0.85rem;
-		max-height: 220px;
-		overflow: auto;
-		white-space: pre-wrap;
-	}
-
-	.snippet-note {
-		font-size: 0.82rem;
 	}
 
 	.backup {
