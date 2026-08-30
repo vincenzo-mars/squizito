@@ -42,6 +42,26 @@ class Library {
 			quizzes: Array.isArray(stored.quizzes) ? stored.quizzes.filter(isStoredQuiz) : []
 		};
 		this.#loaded = true;
+
+		if (this.#repairPartialAttempts()) this.#persist();
+	}
+
+	/**
+	 * Older runs marked every subset as partial, so a review covering the whole quiz never became
+	 * the record. Attempts that answered every question are promoted back to full ones.
+	 */
+	#repairPartialAttempts(): boolean {
+		let changed = false;
+
+		for (const quiz of this.#data.quizzes) {
+			for (const attempt of quiz.attempts) {
+				if (!attempt.partial || attempt.total !== quiz.questionCount) continue;
+				attempt.partial = false;
+				changed = true;
+			}
+		}
+
+		return changed;
 	}
 
 	get quizzes(): StoredQuiz[] {

@@ -374,3 +374,103 @@ Fammi sapere se vuoi altre domande.`);
 		expect(quiz.questions).toHaveLength(2);
 	});
 });
+
+/**
+ * Un output di NotebookLM può arrivare sporco in molti modi. Quello che non deve mai succedere è
+ * che la [x] finisca su un'opzione diversa da quella marcata nel file: o si legge giusto, o il
+ * caricamento fallisce con un errore visibile.
+ */
+describe('parseQuiz, nessun errore silenzioso sulla risposta corretta', () => {
+	const giusta = (source: string) => {
+		const result = parseQuiz(source);
+		if (!result.ok) return { caricato: false as const, errore: result.errors[0].message };
+		const corrette = result.quiz.questions[0].options.filter((option) => option.correct);
+		return { caricato: true as const, corrette: corrette.map((option) => option.text) };
+	};
+
+	it('tiene la [x] al suo posto con le citazioni di NotebookLM', () => {
+		expect(
+			giusta(`## Come viene definita la capacità del bambino?
+- [x] Linguaggio del pensiero (o linguaggio della mente). [464]
+- [ ] Bootstrapping del barone di Münchhausen. [451]
+- [ ] Postura pedagogica ostensiva. [472, 480]
+> Il bambino possiede un linguaggio del pensiero [464, 476].`)
+		).toEqual({
+			caricato: true,
+			corrette: ['Linguaggio del pensiero (o linguaggio della mente). [464]']
+		});
+	});
+
+	it('tiene la [x] al suo posto col grassetto sul testo', () => {
+		expect(
+			giusta(`## Domanda?
+- [x] **Giusta**
+- [ ] Sbagliata`)
+		).toEqual({ caricato: true, corrette: ['Giusta'] });
+	});
+
+	it('tiene la [x] al suo posto con spazi e maiuscola', () => {
+		expect(
+			giusta(`## Domanda?
+-  [ X ]  Giusta
+-  [   ]  Sbagliata`)
+		).toEqual({ caricato: true, corrette: ['Giusta'] });
+	});
+
+	it('non si carica se la casella è avvolta dal grassetto', () => {
+		expect(
+			giusta(`## Domanda?
+- **[x] Giusta**
+- [ ] Sbagliata`).caricato
+		).toBe(false);
+	});
+
+	it('non si carica se la spunta non è una x', () => {
+		expect(
+			giusta(`## Domanda?
+- [✓] Giusta
+- [ ] Sbagliata`).caricato
+		).toBe(false);
+	});
+
+	it('non si carica con la lettera davanti alla casella', () => {
+		expect(
+			giusta(`## Domanda?
+A. [x] Giusta
+B. [ ] Sbagliata`).caricato
+		).toBe(false);
+	});
+
+	it('non si carica con la numerazione davanti al trattino', () => {
+		expect(
+			giusta(`## Domanda?
+1. - [x] Giusta
+2. - [ ] Sbagliata`).caricato
+		).toBe(false);
+	});
+
+	it('la citazione attaccata alla casella resta nel testo, non sposta la [x]', () => {
+		expect(
+			giusta(`## Domanda?
+- [x][464] Giusta
+- [ ] Sbagliata`)
+		).toEqual({ caricato: true, corrette: ['[464] Giusta'] });
+	});
+
+	it('una opzione spezzata su due righe perde la coda ma non la marcatura', () => {
+		expect(
+			giusta(`## Domanda?
+- [x] Giusta
+  continuazione ignorata
+- [ ] Sbagliata`)
+		).toEqual({ caricato: true, corrette: ['Giusta'] });
+	});
+
+	it('nessuna [x] anywhere fa fallire il caricamento invece di indovinare', () => {
+		expect(
+			giusta(`## Domanda?
+- [ ] Una
+- [ ] Due`).caricato
+		).toBe(false);
+	});
+});
