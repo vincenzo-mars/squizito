@@ -7,7 +7,7 @@
 	import QuizCard from '$lib/components/QuizCard.svelte';
 	import { DEMO_SOURCE } from '$lib/quiz/demo';
 	import { parseQuiz } from '$lib/quiz/parser';
-	import { buildPrompt, SYNTAX_EXAMPLE } from '$lib/quiz/prompt';
+	import { BATCH_SIZE, buildPrompt, isBatched, SYNTAX_EXAMPLE } from '$lib/quiz/prompt';
 	import Toggle from '$lib/components/Toggle.svelte';
 	import type { ParseIssue } from '$lib/quiz/types';
 	import { downloadBackup, readBackupFile } from '$lib/storage/backup';
@@ -41,6 +41,7 @@
 	].join('\n');
 
 	let prompt = $derived(buildPrompt(settings.prompt));
+	let batched = $derived(isBatched(settings.prompt));
 
 	let renameTarget = $state<StoredQuiz | null>(null);
 	let renameValue = $state('');
@@ -137,14 +138,14 @@
 		<p class="eyebrow">Quiz da NotebookLM</p>
 		<h1>Trasforma i tuoi appunti in un test.</h1>
 		<p class="lead muted">
-			Fatti generare le domande da NotebookLM nel formato qui sotto, scarica il file che salva fra
-			le fonti, e Squizito lo trasforma in un test con punti, serie e badge. Tutto resta nel tuo
+			Fatti generare le domande da NotebookLM nel formato qui sotto, prendi la nota che ti salva nel
+			notebook, e Squizito la trasforma in un test con punti, serie e badge. Tutto resta nel tuo
 			browser: nessun account, nessun server.
 		</p>
 
 		<ol class="steps">
 			<li><strong>1.</strong> Copia il prompt e dallo in pasto a NotebookLM</li>
-			<li><strong>2.</strong> Trascina qui il file .md che ti restituisce</li>
+			<li><strong>2.</strong> Incolla qui la nota che ti restituisce, o trascina il .md</li>
 			<li><strong>3.</strong> Rispondi, accumula punti, riprova le sbagliate</li>
 		</ol>
 	</section>
@@ -221,6 +222,28 @@
 				</Button>
 			</div>
 			<pre>{prompt}</pre>
+
+			<p class="eyebrow">Cosa succede su NotebookLM</p>
+			<ol class="steps tutorial">
+				<li>
+					<strong>1.</strong> Apri il notebook con le tue fonti e incolla il prompt nella chat.
+				</li>
+				<li>
+					<strong>2.</strong> Risponde con il quiz e lo salva fra le note. Se non lo fa da solo,
+					premi tu <em>Salva nella nota</em> sotto la risposta.
+				</li>
+				{#if batched}
+					<li>
+						<strong>3.</strong> Le domande arrivano a blocchi da {BATCH_SIZE}: a ogni "blocco n su
+						N" rispondi <code>continua</code>, fino alla nota <strong>FINALE</strong>, l'unica che
+						le contiene tutte.
+					</li>
+				{/if}
+				<li>
+					<strong>{batched ? 4 : 3}.</strong> Apri quella nota, copia tutto e incollalo qui in
+					<em>Carica quiz</em>. Se invece l'hai scaricata in .md, trascina il file.
+				</li>
+			</ol>
 
 			<p class="muted">Come viene il Markdown che ti restituisce:</p>
 			<pre>{SYNTAX_EXAMPLE}</pre>
@@ -321,7 +344,7 @@
 		<span class="drop-icon" aria-hidden="true">📄</span>
 		<span class="drop-title">Trascina qui il file .md</span>
 		<span class="drop-hint muted">
-			quello che NotebookLM salva fra le fonti, oppure scegline uno dal disco
+			se hai scaricato la nota di NotebookLM, oppure scegline uno dal disco
 		</span>
 	</button>
 
@@ -426,6 +449,24 @@
 
 	.steps strong {
 		color: var(--orange-dark);
+	}
+
+	.tutorial {
+		flex-direction: column;
+		gap: 0.4rem;
+		margin: 0;
+	}
+
+	.tutorial li {
+		border-radius: var(--radius);
+		padding: 0.55rem 0.85rem;
+		font-weight: 500;
+		line-height: 1.5;
+	}
+
+	.tutorial em {
+		font-style: normal;
+		font-weight: 700;
 	}
 
 	h2 {
