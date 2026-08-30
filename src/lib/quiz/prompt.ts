@@ -25,6 +25,15 @@ export const DEFAULT_PROMPT_OPTIONS: PromptOptions = {
 	matching: false
 };
 
+/** Questions per round when the quiz is long enough that a single answer would get truncated. */
+const BATCH_SIZE = 15;
+
+/** Only a plain positive number counts: anything else means "decide tu". */
+function requested(options: PromptOptions): number | null {
+	const count = Number.parseInt(options.count.trim(), 10);
+	return Number.isFinite(count) && count > 0 ? count : null;
+}
+
 function titlePlaceholder(options: PromptOptions): string {
 	const source = options.source.trim() || '<materia o fonte>';
 	const chapter = options.chapter.trim() || '<capitolo o argomento>';
@@ -39,6 +48,30 @@ function scope(options: PromptOptions): string {
 	if (source) return `Lavora sulla fonte "${source}", coprila per intero.`;
 	if (chapter) return `Lavora solo sul ${chapter}.`;
 	return 'Lavora su tutte le fonti del notebook.';
+}
+
+/**
+ * How the quiz has to come out of NotebookLM. Past a certain length one answer gets truncated, so
+ * the quiz is grown in cumulative rounds: every round rewrites the previous questions verbatim and
+ * appends new ones, and only the file marked FINALE is the one to load.
+ */
+function delivery(options: PromptOptions): string[] {
+	const title = titlePlaceholder(options);
+	const count = requested(options);
+
+	if (!count || count <= BATCH_SIZE)
+		return [
+			`Salvalo come nuova fonte del notebook, in un file "${title}.md" che contenga solo il quiz, e rispondi in chat con lo stesso identico contenuto, senza testo prima o dopo.`
+		];
+
+	return [
+		`Procedi a blocchi da ${BATCH_SIZE} domande, ognuno cumulativo:`,
+		`- Primo blocco: salva una nuova fonte "${title} - 1.md" con le prime ${BATCH_SIZE} domande.`,
+		`- Blocchi successivi: salva ogni volta una NUOVA fonte "${title} - <n>.md" che ripete alla lettera tutte le domande dei blocchi precedenti e aggiunge in coda ${BATCH_SIZE} domande nuove.`,
+		`- L'ultimo blocco lo chiami "${title} - FINALE.md" e contiene tutte e ${count} le domande.`,
+		'- Non riformulare, non riordinare e non togliere le domande già generate: ricopiale identiche.',
+		`- Chiudi ogni blocco scrivendo in chat solo "blocco <n>: <domande finora> su ${count}", poi fermati e aspetta che io scriva "continua". Il file lo scrivi comunque per intero, in chat non ripetere il quiz.`
+	];
 }
 
 function format(options: PromptOptions): string {
@@ -97,11 +130,9 @@ function rules(options: PromptOptions): string[] {
 	return list;
 }
 
-/** Only a plain positive number ends up in the prompt: anything else is ignored. */
 function amount(options: PromptOptions): string {
-	const count = Number.parseInt(options.count.trim(), 10);
-	if (!Number.isFinite(count) || count < 1) return '';
-	return `Genera esattamente ${count} domande.`;
+	const count = requested(options);
+	return count ? `Genera esattamente ${count} domande.` : '';
 }
 
 /** Prompt to paste into NotebookLM, built from the fields and options picked on the home page. */
@@ -111,7 +142,7 @@ export function buildPrompt(options: PromptOptions): string {
 		scope(options),
 		amount(options),
 		'',
-		`Salvalo come nuova fonte del notebook, in un file "${titlePlaceholder(options)}.md" che contenga solo il quiz, e rispondi in chat con lo stesso identico contenuto, senza testo prima o dopo.`,
+		...delivery(options),
 		'',
 		format(options),
 		'',
