@@ -7,7 +7,7 @@
 	import QuizCard from '$lib/components/QuizCard.svelte';
 	import { DEMO_SOURCE } from '$lib/quiz/demo';
 	import { parseQuiz } from '$lib/quiz/parser';
-	import { BATCH_SIZE, buildPrompt, isBatched, SYNTAX_EXAMPLE } from '$lib/quiz/prompt';
+	import { BATCH_SIZE, buildPrompt, isBatched } from '$lib/quiz/prompt';
 	import Toggle from '$lib/components/Toggle.svelte';
 	import type { ParseIssue } from '$lib/quiz/types';
 	import { downloadBackup, readBackupFile } from '$lib/storage/backup';
@@ -152,16 +152,44 @@
 
 	<details class="surface guide" bind:open={guideOpen}>
 		<summary>
-			<span>Come si scrivono le domande</span>
-			<span class="muted summary-hint">formato, prompt per NotebookLM e opzioni</span>
+			<span>Genera le domande con NotebookLM</span>
+			<span class="muted summary-hint">tutorial, prompt e opzioni</span>
 		</summary>
 
 		<div class="stack details-body">
-			<p class="muted">
-				Il parser è tollerante: numerazione, code fence, grassetto e testo fuori formato non danno
-				fastidio. Serve solo che ogni domanda inizi con <code>##</code> e abbia almeno due opzioni,
-				di cui almeno una marcata <code>[x]</code>.
-			</p>
+			<div class="tutorial-card">
+				<p class="eyebrow">Come funziona su NotebookLM</p>
+				<ol class="tutorial">
+					<li>
+						<span class="step-n">1</span>
+						<span>Apri il notebook con le tue fonti e incolla il prompt qui sotto nella chat.</span>
+					</li>
+					<li>
+						<span class="step-n">2</span>
+						<span>
+							Risponde con il quiz e lo salva fra le <strong>note</strong>. Se non lo fa da solo,
+							premi tu <em>Salva nella nota</em> sotto la risposta.
+						</span>
+					</li>
+					{#if batched}
+						<li>
+							<span class="step-n">3</span>
+							<span>
+								Le domande arrivano a blocchi da {BATCH_SIZE}: a ogni "blocco n su N" rispondi
+								<code>continua</code>, fino alla nota che finisce per <strong>COMPLETO</strong>,
+								l'unica che le contiene tutte.
+							</span>
+						</li>
+					{/if}
+					<li>
+						<span class="step-n">{batched ? 4 : 3}</span>
+						<span>
+							Apri quella nota, copia tutto e incollalo qui in <em>Carica quiz</em>. Se invece l'hai
+							scaricata in .md, trascina il file.
+						</span>
+					</li>
+				</ol>
+			</div>
 
 			<div class="options">
 				<p class="eyebrow">Cosa deve generare NotebookLM</p>
@@ -217,36 +245,16 @@
 
 			<div class="prompt-head">
 				<p class="eyebrow">Prompt da dare a NotebookLM</p>
-				<Button size="sm" onclick={() => copy(prompt)}>
+				<Button onclick={() => copy(prompt)}>
 					{copied ? 'Copiato' : 'Copia il prompt'}
 				</Button>
 			</div>
-			<pre>{prompt}</pre>
 
-			<p class="eyebrow">Cosa succede su NotebookLM</p>
-			<ol class="steps tutorial">
-				<li>
-					<strong>1.</strong> Apri il notebook con le tue fonti e incolla il prompt nella chat.
-				</li>
-				<li>
-					<strong>2.</strong> Risponde con il quiz e lo salva fra le note. Se non lo fa da solo,
-					premi tu <em>Salva nella nota</em> sotto la risposta.
-				</li>
-				{#if batched}
-					<li>
-						<strong>3.</strong> Le domande arrivano a blocchi da {BATCH_SIZE}: a ogni "blocco n su
-						N" rispondi <code>continua</code>, fino alla nota che finisce per
-						<strong>COMPLETO</strong>, l'unica che le contiene tutte.
-					</li>
-				{/if}
-				<li>
-					<strong>{batched ? 4 : 3}.</strong> Apri quella nota, copia tutto e incollalo qui in
-					<em>Carica quiz</em>. Se invece l'hai scaricata in .md, trascina il file.
-				</li>
-			</ol>
-
-			<p class="muted">Come viene il Markdown che ti restituisce:</p>
-			<pre>{SYNTAX_EXAMPLE}</pre>
+			<p class="muted">
+				Il parser è tollerante: numerazione, code fence, grassetto e testo fuori formato non danno
+				fastidio. Serve solo che ogni domanda inizi con <code>##</code> e abbia almeno due opzioni,
+				di cui almeno una marcata <code>[x]</code>.
+			</p>
 		</div>
 	</details>
 
@@ -451,17 +459,40 @@
 		color: var(--orange-dark);
 	}
 
+	.tutorial-card {
+		border: 2px solid var(--line-strong);
+		border-radius: var(--radius-lg);
+		background: var(--orange-soft);
+		padding: 1rem 1.1rem 1.1rem;
+	}
+
 	.tutorial {
+		list-style: none;
+		display: flex;
 		flex-direction: column;
-		gap: 0.4rem;
-		margin: 0;
+		gap: 0.7rem;
+		margin: 0.6rem 0 0;
+		padding: 0;
 	}
 
 	.tutorial li {
-		border-radius: var(--radius);
-		padding: 0.55rem 0.85rem;
-		font-weight: 500;
+		display: flex;
+		align-items: flex-start;
+		gap: 0.7rem;
 		line-height: 1.5;
+	}
+
+	.step-n {
+		flex: none;
+		display: grid;
+		place-items: center;
+		width: 1.7rem;
+		height: 1.7rem;
+		border-radius: 999px;
+		background: var(--orange);
+		color: #fff;
+		font-weight: 800;
+		font-size: 0.9rem;
 	}
 
 	.tutorial em {
@@ -640,23 +671,6 @@
 
 	.details-body {
 		margin-top: 1rem;
-	}
-
-	/* The prompt is long prose: wrap it instead of forcing a horizontal scroll. */
-	.guide pre {
-		white-space: pre-wrap;
-		max-height: 340px;
-		overflow: auto;
-	}
-
-	pre {
-		margin: 0;
-		overflow-x: auto;
-		background: var(--bg-tint);
-		border-radius: var(--radius);
-		padding: 1rem;
-		font-size: 0.82rem;
-		line-height: 1.5;
 	}
 
 	code {
