@@ -40,19 +40,35 @@ export function isBatched(options: PromptOptions): boolean {
 	return count !== null && count > BATCH_SIZE;
 }
 
+/**
+ * A bare number is a chapter number: spell it out, so "3" doesn't end up alone in a note title.
+ * Uppercase in titles, where it has to stand out, plain in the middle of a sentence.
+ */
+function chapterLabel(raw: string, shouting = false): string {
+	const chapter = raw.trim();
+	if (!/^\d+([.,]\d+)?$/.test(chapter)) return chapter;
+	return `${shouting ? 'CAPITOLO' : 'capitolo'} ${chapter}`;
+}
+
 function titlePlaceholder(options: PromptOptions): string {
 	const source = options.source.trim() || '<materia o fonte>';
-	const chapter = options.chapter.trim() || '<capitolo o argomento>';
+	const chapter = chapterLabel(options.chapter, true) || '<capitolo o argomento>';
 	return `${source} - ${chapter}`;
+}
+
+/** Title of the note holding the whole quiz: the one to load, telling it apart from the rounds. */
+function noteTitle(options: PromptOptions): string {
+	return `${titlePlaceholder(options)} COMPLETO`;
 }
 
 function scope(options: PromptOptions): string {
 	const source = options.source.trim();
 	const chapter = options.chapter.trim();
 
-	if (source && chapter) return `Lavora sulla fonte "${source}", solo sul ${chapter}.`;
+	if (source && chapter)
+		return `Lavora sulla fonte "${source}", solo sul ${chapterLabel(chapter)}.`;
 	if (source) return `Lavora sulla fonte "${source}", coprila per intero.`;
-	if (chapter) return `Lavora solo sul ${chapter}.`;
+	if (chapter) return `Lavora solo sul ${chapterLabel(chapter)}.`;
 	return 'Lavora su tutte le fonti del notebook.';
 }
 
@@ -68,14 +84,14 @@ function delivery(options: PromptOptions): string[] {
 
 	if (!isBatched(options))
 		return [
-			`Salvalo fra le NOTE del notebook, mai fra le fonti: una nuova nota intitolata "${title}" che contenga solo il quiz, e rispondi in chat con lo stesso identico contenuto, senza testo prima o dopo.`
+			`Salvalo fra le NOTE del notebook, mai fra le fonti: una nuova nota intitolata "${noteTitle(options)}" che contenga solo il quiz, e rispondi in chat con lo stesso identico contenuto, senza testo prima o dopo.`
 		];
 
 	return [
 		`Procedi a blocchi da ${BATCH_SIZE} domande, ognuno cumulativo. Ogni blocco lo salvi fra le NOTE del notebook, mai fra le fonti:`,
 		`- Primo blocco: una nuova nota intitolata "${title} - 1" con le prime ${BATCH_SIZE} domande.`,
 		`- Blocchi successivi: ogni volta una NUOVA nota intitolata "${title} - <n>", che ripete alla lettera tutte le domande dei blocchi precedenti e aggiunge in coda ${BATCH_SIZE} domande nuove.`,
-		`- L'ultima nota la intitoli "${title} - FINALE" e contiene tutte e ${count} le domande.`,
+		`- L'ultima nota la intitoli "${noteTitle(options)}" e contiene tutte e ${count} le domande.`,
 		'- Non riformulare, non riordinare e non togliere le domande già generate: ricopiale identiche.',
 		`- Chiudi ogni blocco scrivendo in chat solo "blocco <n>: <domande finora> su ${count}", poi fermati e aspetta che io scriva "continua". La nota la scrivi comunque per intero, in chat non ripetere il quiz.`
 	];

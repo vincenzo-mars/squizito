@@ -235,8 +235,8 @@
 				{#if batched}
 					<li>
 						<strong>3.</strong> Le domande arrivano a blocchi da {BATCH_SIZE}: a ogni "blocco n su
-						N" rispondi <code>continua</code>, fino alla nota <strong>FINALE</strong>, l'unica che
-						le contiene tutte.
+						N" rispondi <code>continua</code>, fino alla nota che finisce per
+						<strong>COMPLETO</strong>, l'unica che le contiene tutte.
 					</li>
 				{/if}
 				<li>
