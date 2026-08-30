@@ -75,7 +75,7 @@ Il punteggio è tutto o niente, come per le domande a risposta multipla.
 Genera un quiz di ripasso dalle fonti accademiche di questo notebook.
 Lavora su tutte le fonti del notebook.
 
-Salvalo fra le NOTE del notebook, mai fra le fonti: una nuova nota intitolata "<materia o fonte> - <capitolo o argomento>" che contenga solo il quiz, e rispondi in chat con lo stesso identico contenuto, senza testo prima o dopo.
+Salvalo fra le NOTE del notebook, mai fra le fonti: una nuova nota intitolata "<materia o fonte> - <capitolo o argomento> COMPLETO" che contenga solo il quiz, e rispondi in chat con lo stesso identico contenuto, senza testo prima o dopo.
 
 # <materia o fonte> - <capitolo o argomento>
 > <una riga su cosa copre>
@@ -105,7 +105,8 @@ assemblato.
 Il quiz finisce fra le **note** del notebook, mai fra le fonti: così non rientra nelle fonti da cui
 NotebookLM genera le domande successive. Oltre le 15 domande il prompt passa a blocchi cumulativi,
 perché una risposta sola verrebbe troncata: a ogni blocco si risponde `continua`, e la nota da
-caricare è solo l'ultima, quella che finisce per `- FINALE`.
+caricare è solo l'ultima, quella che finisce per `COMPLETO`. Un capitolo scritto come numero secco
+viene esteso in `CAPITOLO <n>`, così il titolo della nota resta riconoscibile nel notebook.
 
 ## Punteggio
 
