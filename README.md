@@ -72,35 +72,32 @@ Il punteggio è tutto o niente, come per le domande a risposta multipla.
 ## Prompt per NotebookLM
 
 ```text
-Genera un quiz a risposta multipla basato esclusivamente sulle fonti di questo notebook.
-Rispondi SOLO con un blocco Markdown in questo formato esatto, senza testo prima o dopo:
+Genera un quiz di ripasso dalle fonti accademiche di questo notebook.
+Lavora su tutte le fonti del notebook.
 
-# <tematica> - <capitolo o argomento>
-> <una riga di descrizione>
+Salvalo come nuova fonte del notebook, in un file "<materia o fonte> - <capitolo o argomento>.md" che contenga solo il quiz, e rispondi in chat con lo stesso identico contenuto, senza testo prima o dopo.
+
+# <materia o fonte> - <capitolo o argomento>
+> <una riga su cosa copre>
 
 ## <domanda>
 - [ ] <opzione sbagliata>
 - [x] <opzione corretta>
 - [ ] <opzione sbagliata>
-> <spiegazione esaustiva della risposta corretta>
+> <spiegazione esaustiva>
 
 Regole:
-- Il titolo deve dire di cosa parla il test: nome della materia o della tematica, poi il capitolo o l'argomento specifico, separati da un trattino. Per esempio "Diritto privato - Capitolo 4: le obbligazioni" oppure "Storia romana - La crisi della Repubblica". Niente titoli generici come "Quiz" o "Test di verifica".
-- La riga di descrizione dice in una frase cosa copre il test.
-- Marca sempre con [x] le opzioni corrette e con [ ] quelle sbagliate.
-- Se non ti chiedo altrove qualcosa di diverso, ogni domanda ha 4 opzioni e una sola corretta.
-- Una domanda può avere più risposte corrette: in quel caso metti più [x]. Non c'è un limite a quante domande possono essere di questo tipo.
-- Le opzioni sbagliate devono essere plausibili e pertinenti al contenuto, non assurde: chi non ha studiato deve poterci cadere.
-- Le opzioni della stessa domanda devono avere lunghezza e livello di dettaglio simili, altrimenti la corretta si riconosce dalla forma invece che dal contenuto.
-- Ordine delle opzioni casuale: la corretta non sempre nella stessa posizione.
-- Ogni domanda si regge da sola: nessun riferimento al contesto ("come detto sopra", "nella pagina 3", "secondo l'autore").
-- La riga "> spiegazione" è obbligatoria e deve essere esaustiva: perché la risposta corretta è corretta e, dove serve a capire, perché le altre non lo sono. Meglio lunga che vaga.
-- Copri punti diversi delle fonti: niente due domande sullo stesso concetto.
-- Non inventare niente che non sia nelle fonti.
-- Non aggiungere numerazione, titoli di sezione, introduzioni, commenti o note fuori dal formato.
+- 4 opzioni per domanda. Alterna domande con una sola [x] e domande con più [x], queste ultime in minoranza e senza dire quante siano le corrette.
+- Distrattori plausibili, lunghi quanto la corretta, in ordine casuale.
+- Ogni domanda si regge da sola: niente rimandi a pagine, paragrafi o "come sopra".
+- La riga "> " è obbligatoria: perché la corretta è corretta e, se serve, perché le altre no.
+- Copri punti diversi, non ripetere lo stesso concetto, non uscire dalle fonti.
+- Solo il formato: niente numerazione, introduzioni, commenti o note.
 ```
 
-Lo stesso prompt è copiabile dalla home con un bottone.
+Il prompt si costruisce dalla home: due campi per il nome della fonte e per il capitolo, quattro
+interruttori per risposta multipla, tag, domande di ragionamento e collegamenti. Lasciando i campi
+vuoti il quiz copre tutte le fonti del notebook. Il bottone lo copia già assemblato.
 
 ## Punteggio
 
