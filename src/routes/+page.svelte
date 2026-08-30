@@ -164,6 +164,22 @@
 
 			<div class="options">
 				<p class="eyebrow">Cosa deve generare NotebookLM</p>
+
+				<div class="fields">
+					<label class="field">
+						<span>Nome della fonte</span>
+						<input
+							bind:value={settings.promptSource}
+							placeholder="Torrente-Schlesinger, Manuale di diritto privato"
+						/>
+					</label>
+					<label class="field">
+						<span>Capitolo o argomento</span>
+						<input bind:value={settings.promptChapter} placeholder="Capitolo 4 - Le obbligazioni" />
+					</label>
+				</div>
+				<p class="muted field-note">Lasciali vuoti per un quiz su tutte le fonti del notebook.</p>
+
 				<div class="options-grid">
 					<Toggle
 						bind:checked={settings.promptMultiple}
@@ -522,6 +538,17 @@
 		border: 2px solid var(--line);
 		border-radius: var(--radius);
 		background: var(--surface);
+	}
+
+	.fields {
+		display: grid;
+		gap: 0.75rem;
+		grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	}
+
+	.field-note {
+		font-size: 0.8rem;
+		margin-top: -0.2rem;
 	}
 
 	.options-grid {

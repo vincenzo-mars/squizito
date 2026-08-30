@@ -74,6 +74,22 @@ class Settings {
 		return this.#data.prompt;
 	}
 
+	get promptSource() {
+		return this.#data.prompt.source;
+	}
+	set promptSource(value: string) {
+		this.#data.prompt.source = value;
+		this.#persist();
+	}
+
+	get promptChapter() {
+		return this.#data.prompt.chapter;
+	}
+	set promptChapter(value: string) {
+		this.#data.prompt.chapter = value;
+		this.#persist();
+	}
+
 	get promptMultiple() {
 		return this.#data.prompt.multiple;
 	}
