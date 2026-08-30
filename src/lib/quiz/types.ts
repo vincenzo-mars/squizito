@@ -13,6 +13,8 @@ export type Question = {
 	text: string;
 	tag?: string;
 	explanation?: string;
+	/** Text the explanation quotes as the correct option, when the source declares it. */
+	citedAnswer?: string;
 	/** `choice` is the classic multiple choice, `match` links names to definitions. */
 	kind: 'choice' | 'match';
 	/** Empty on a `match` question. */

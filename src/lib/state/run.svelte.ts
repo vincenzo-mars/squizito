@@ -173,7 +173,9 @@ class Run {
 
 				return {
 					index,
-					optionOrder: options.shuffle ? shuffled(positions) : positions,
+					// Always shuffled: the prompt asks for the correct option first, so keeping the
+					// source order would put the answer in position A every time.
+					optionOrder: shuffled(positions),
 					selected: [],
 					leftOrder: question.kind === 'match' ? shuffled(pairs) : [],
 					rightOrder: question.kind === 'match' ? shuffled(pairs) : [],

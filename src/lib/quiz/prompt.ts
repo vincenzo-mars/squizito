@@ -25,6 +25,15 @@ export const DEFAULT_PROMPT_OPTIONS: PromptOptions = {
 	matching: false
 };
 
+/** Questions per round when the quiz is long enough that a single answer would get truncated. */
+const BATCH_SIZE = 15;
+
+/** Only a plain positive number counts: anything else means "decide tu". */
+function requested(options: PromptOptions): number | null {
+	const count = Number.parseInt(options.count.trim(), 10);
+	return Number.isFinite(count) && count > 0 ? count : null;
+}
+
 function titlePlaceholder(options: PromptOptions): string {
 	const source = options.source.trim() || '<materia o fonte>';
 	const chapter = options.chapter.trim() || '<capitolo o argomento>';
@@ -41,6 +50,30 @@ function scope(options: PromptOptions): string {
 	return 'Lavora su tutte le fonti del notebook.';
 }
 
+/**
+ * How the quiz has to come out of NotebookLM. Past a certain length one answer gets truncated, so
+ * the quiz is grown in cumulative rounds: every round rewrites the previous questions verbatim and
+ * appends new ones, and only the file marked FINALE is the one to load.
+ */
+function delivery(options: PromptOptions): string[] {
+	const title = titlePlaceholder(options);
+	const count = requested(options);
+
+	if (!count || count <= BATCH_SIZE)
+		return [
+			`Salvalo come nuova fonte del notebook, in un file "${title}.md" che contenga solo il quiz, e rispondi in chat con lo stesso identico contenuto, senza testo prima o dopo.`
+		];
+
+	return [
+		`Procedi a blocchi da ${BATCH_SIZE} domande, ognuno cumulativo:`,
+		`- Primo blocco: salva una nuova fonte "${title} - 1.md" con le prime ${BATCH_SIZE} domande.`,
+		`- Blocchi successivi: salva ogni volta una NUOVA fonte "${title} - <n>.md" che ripete alla lettera tutte le domande dei blocchi precedenti e aggiunge in coda ${BATCH_SIZE} domande nuove.`,
+		`- L'ultimo blocco lo chiami "${title} - FINALE.md" e contiene tutte e ${count} le domande.`,
+		'- Non riformulare, non riordinare e non togliere le domande già generate: ricopiale identiche.',
+		`- Chiudi ogni blocco scrivendo in chat solo "blocco <n>: <domande finora> su ${count}", poi fermati e aspetta che io scriva "continua". Il file lo scrivi comunque per intero, in chat non ripetere il quiz.`
+	];
+}
+
 function format(options: PromptOptions): string {
 	const lines = [
 		`# ${titlePlaceholder(options)}`,
@@ -52,10 +85,10 @@ function format(options: PromptOptions): string {
 	if (options.tags) lines.push('Tag: <argomento>');
 
 	lines.push(
-		'- [ ] <opzione sbagliata>',
 		'- [x] <opzione corretta>',
 		'- [ ] <opzione sbagliata>',
-		'> <spiegazione esaustiva>'
+		'- [ ] <opzione sbagliata>',
+		'> Corretta: "<testo identico dell\'opzione corretta>". <spiegazione esaustiva>'
 	);
 
 	if (options.matching) {
@@ -76,10 +109,11 @@ function rules(options: PromptOptions): string[] {
 		options.multiple
 			? '4 opzioni per domanda. Alterna domande con una sola [x] e domande con più [x], queste ultime in minoranza e senza dire quante siano le corrette.'
 			: '4 opzioni per domanda, una sola [x].',
-		'Distrattori plausibili, lunghi quanto la corretta, in ordine casuale.',
+		"Metti sempre la risposta corretta come PRIMA opzione e marcala. Non mescolare le opzioni: al mescolamento pensa l'app.",
+		'Distrattori plausibili e lunghi quanto la corretta.',
 		'Ogni domanda si regge da sola: niente rimandi a pagine, paragrafi o "come sopra".',
-		'La riga "> " è obbligatoria: perché la corretta è corretta e, se serve, perché le altre no.',
-		"Prima di rispondere rileggi ogni domanda: la [x] deve stare sull'opzione descritta dalla spiegazione. Se le due non coincidono, correggi la [x].",
+		'La riga "> " inizia citando alla lettera l\'opzione corretta: > Corretta: "<testo identico dell\'opzione marcata>". Poi spiega perché è corretta e, se serve, perché le altre no.',
+		'Prima di consegnare rileggi ogni domanda: se il testo dopo "Corretta:" non è identico all\'opzione marcata [x], la marcatura è sbagliata, correggila.',
 		'Copri punti diversi, non ripetere lo stesso concetto, non uscire dalle fonti.'
 	];
 
@@ -96,11 +130,9 @@ function rules(options: PromptOptions): string[] {
 	return list;
 }
 
-/** Only a plain positive number ends up in the prompt: anything else is ignored. */
 function amount(options: PromptOptions): string {
-	const count = Number.parseInt(options.count.trim(), 10);
-	if (!Number.isFinite(count) || count < 1) return '';
-	return `Genera esattamente ${count} domande.`;
+	const count = requested(options);
+	return count ? `Genera esattamente ${count} domande.` : '';
 }
 
 /** Prompt to paste into NotebookLM, built from the fields and options picked on the home page. */
@@ -110,7 +142,7 @@ export function buildPrompt(options: PromptOptions): string {
 		scope(options),
 		amount(options),
 		'',
-		`Salvalo come nuova fonte del notebook, in un file "${titlePlaceholder(options)}.md" che contenga solo il quiz, e rispondi in chat con lo stesso identico contenuto, senza testo prima o dopo.`,
+		...delivery(options),
 		'',
 		format(options),
 		'',
