@@ -3,6 +3,8 @@ export type PromptOptions = {
 	source: string;
 	/** Chapter or topic to restrict to. Empty means "the whole source". */
 	chapter: string;
+	/** How many questions to ask for. Empty means "decide tu". */
+	count: string;
 	/** Allow questions with more than one correct option. */
 	multiple: boolean;
 	/** Ask for a `Tag:` line, which the app shows on the question cards. */
@@ -16,6 +18,7 @@ export type PromptOptions = {
 export const DEFAULT_PROMPT_OPTIONS: PromptOptions = {
 	source: '',
 	chapter: '',
+	count: '',
 	multiple: true,
 	tags: false,
 	reasoning: false,
@@ -92,11 +95,19 @@ function rules(options: PromptOptions): string[] {
 	return list;
 }
 
+/** Only a plain positive number ends up in the prompt: anything else is ignored. */
+function amount(options: PromptOptions): string {
+	const count = Number.parseInt(options.count.trim(), 10);
+	if (!Number.isFinite(count) || count < 1) return '';
+	return `Genera esattamente ${count} domande.`;
+}
+
 /** Prompt to paste into NotebookLM, built from the fields and options picked on the home page. */
 export function buildPrompt(options: PromptOptions): string {
 	return [
 		'Genera un quiz di ripasso dalle fonti accademiche di questo notebook.',
 		scope(options),
+		amount(options),
 		'',
 		`Salvalo come nuova fonte del notebook, in un file "${titlePlaceholder(options)}.md" che contenga solo il quiz, e rispondi in chat con lo stesso identico contenuto, senza testo prima o dopo.`,
 		'',
@@ -104,7 +115,9 @@ export function buildPrompt(options: PromptOptions): string {
 		'',
 		'Regole:',
 		...rules(options).map((rule) => `- ${rule}`)
-	].join('\n');
+	]
+		.filter((line, index, lines) => line !== '' || lines[index - 1] !== '')
+		.join('\n');
 }
 
 export const SYNTAX_EXAMPLE = `# Titolo del quiz

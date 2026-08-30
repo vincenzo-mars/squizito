@@ -90,6 +90,14 @@ class Settings {
 		this.#persist();
 	}
 
+	get promptCount() {
+		return this.#data.prompt.count;
+	}
+	set promptCount(value: string) {
+		this.#data.prompt.count = value;
+		this.#persist();
+	}
+
 	get promptMultiple() {
 		return this.#data.prompt.multiple;
 	}
