@@ -175,25 +175,3 @@ export function buildPrompt(options: PromptOptions): string {
 		.filter((line, index, lines) => line !== '' || lines[index - 1] !== '')
 		.join('\n');
 }
-
-export const SYNTAX_EXAMPLE = `# Titolo del quiz
-> Descrizione breve, una riga. Opzionale.
-
-## Qual è la capitale d'Italia?
-- [ ] Milano
-- [x] Roma
-- [ ] Napoli
-> Roma è capitale dal 1871. Riga opzionale.
-
-## Quali di questi sono tipizzati staticamente?
-Tag: linguaggi
-- [x] Rust
-- [x] TypeScript
-- [ ] Python
-> Due [x] significa risposta multipla.
-
-## Collega ogni linguaggio al suo ambito
-- Rust -> Sistemi e programmi dove contano memoria e prestazioni
-- SQL -> Interrogazione di basi di dati relazionali
-- CSS -> Presentazione e impaginazione di documenti web
-> Le righe con la freccia diventano un esercizio di collegamento.`;
