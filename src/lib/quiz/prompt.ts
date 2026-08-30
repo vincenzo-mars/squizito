@@ -97,7 +97,8 @@ function rules(options: PromptOptions): string[] {
 		'La riga "> spiegazione" è obbligatoria e deve essere esaustiva: perché la risposta corretta è corretta e, dove serve a capire, perché le altre non lo sono. Meglio lunga che vaga.',
 		'Copri punti diversi delle fonti: niente due domande sullo stesso concetto.',
 		'Non inventare niente che non sia nelle fonti.',
-		'Non aggiungere numerazione, titoli di sezione, introduzioni, commenti o note fuori dal formato.'
+		'Non aggiungere numerazione, titoli di sezione, introduzioni, commenti o note fuori dal formato.',
+		'Il file .md salvato fra le fonti e la risposta in chat devono coincidere carattere per carattere.'
 	);
 
 	return list;
@@ -107,7 +108,10 @@ function rules(options: PromptOptions): string[] {
 export function buildPrompt(options: PromptOptions): string {
 	return [
 		'Genera un quiz a risposta multipla basato esclusivamente sulle fonti di questo notebook.',
-		'Rispondi SOLO con un blocco Markdown in questo formato esatto, senza testo prima o dopo:',
+		'',
+		'Salva SEMPRE il risultato come nuova fonte di questo notebook, in un file Markdown chiamato "<tematica>-<capitolo>.md", così posso scaricarlo. Quel file deve contenere SOLO il quiz nel formato qui sotto: niente titoli aggiuntivi, niente introduzioni, niente commenti, niente note finali. Deve essere caricabile così com\'è in un\'app di quiz esterna, senza che io debba ripulirlo.',
+		'',
+		'Rispondi poi in chat con lo stesso identico contenuto del file, senza testo prima o dopo:',
 		'',
 		formatBlock(options),
 		'',
@@ -119,6 +123,7 @@ export function buildPrompt(options: PromptOptions): string {
 /** Compact version, meant to be appended to a request the user has already written. */
 export function buildSnippet(options: PromptOptions): string {
 	const tail = [
+		"Salva sempre il risultato come nuova fonte del notebook, in un file .md che contenga solo il quiz, così posso scaricarlo e caricarlo in un'app esterna.",
 		'Il titolo deve essere la materia o tematica seguita dal capitolo o argomento, non un generico "Quiz".',
 		'Marca sempre con [x] le corrette e con [ ] le sbagliate.',
 		options.multiple
