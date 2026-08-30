@@ -52,10 +52,10 @@ function format(options: PromptOptions): string {
 	if (options.tags) lines.push('Tag: <argomento>');
 
 	lines.push(
-		'- [ ] <opzione sbagliata>',
 		'- [x] <opzione corretta>',
 		'- [ ] <opzione sbagliata>',
-		'> <spiegazione esaustiva>'
+		'- [ ] <opzione sbagliata>',
+		'> Corretta: "<testo identico dell\'opzione corretta>". <spiegazione esaustiva>'
 	);
 
 	if (options.matching) {
@@ -76,10 +76,11 @@ function rules(options: PromptOptions): string[] {
 		options.multiple
 			? '4 opzioni per domanda. Alterna domande con una sola [x] e domande con più [x], queste ultime in minoranza e senza dire quante siano le corrette.'
 			: '4 opzioni per domanda, una sola [x].',
-		'Distrattori plausibili, lunghi quanto la corretta, in ordine casuale.',
+		"Metti sempre la risposta corretta come PRIMA opzione e marcala. Non mescolare le opzioni: al mescolamento pensa l'app.",
+		'Distrattori plausibili e lunghi quanto la corretta.',
 		'Ogni domanda si regge da sola: niente rimandi a pagine, paragrafi o "come sopra".',
-		'La riga "> " è obbligatoria: perché la corretta è corretta e, se serve, perché le altre no.',
-		"Prima di rispondere rileggi ogni domanda: la [x] deve stare sull'opzione descritta dalla spiegazione. Se le due non coincidono, correggi la [x].",
+		'La riga "> " inizia citando alla lettera l\'opzione corretta: > Corretta: "<testo identico dell\'opzione marcata>". Poi spiega perché è corretta e, se serve, perché le altre no.',
+		'Prima di consegnare rileggi ogni domanda: se il testo dopo "Corretta:" non è identico all\'opzione marcata [x], la marcatura è sbagliata, correggila.',
 		'Copri punti diversi, non ripetere lo stesso concetto, non uscire dalle fonti.'
 	];
 
