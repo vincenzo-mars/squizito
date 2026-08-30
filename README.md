@@ -75,29 +75,37 @@ Il punteggio è tutto o niente, come per le domande a risposta multipla.
 Genera un quiz di ripasso dalle fonti accademiche di questo notebook.
 Lavora su tutte le fonti del notebook.
 
-Salvalo come nuova fonte del notebook, in un file "<materia o fonte> - <capitolo o argomento>.md" che contenga solo il quiz, e rispondi in chat con lo stesso identico contenuto, senza testo prima o dopo.
+Salvalo fra le NOTE del notebook, mai fra le fonti: una nuova nota intitolata "<materia o fonte> - <capitolo o argomento>" che contenga solo il quiz, e rispondi in chat con lo stesso identico contenuto, senza testo prima o dopo.
 
 # <materia o fonte> - <capitolo o argomento>
 > <una riga su cosa copre>
 
 ## <domanda>
-- [ ] <opzione sbagliata>
 - [x] <opzione corretta>
 - [ ] <opzione sbagliata>
-> <spiegazione esaustiva>
+- [ ] <opzione sbagliata>
+> Corretta: "<testo identico dell'opzione corretta>". <spiegazione esaustiva>
 
 Regole:
 - 4 opzioni per domanda. Alterna domande con una sola [x] e domande con più [x], queste ultime in minoranza e senza dire quante siano le corrette.
-- Distrattori plausibili, lunghi quanto la corretta, in ordine casuale.
+- Metti sempre la risposta corretta come PRIMA opzione e marcala. Non mescolare le opzioni: al mescolamento pensa l'app.
+- Distrattori plausibili e lunghi quanto la corretta.
 - Ogni domanda si regge da sola: niente rimandi a pagine, paragrafi o "come sopra".
-- La riga "> " è obbligatoria: perché la corretta è corretta e, se serve, perché le altre no.
+- La riga "> " inizia citando alla lettera l'opzione corretta: > Corretta: "<testo identico dell'opzione marcata>". Poi spiega perché è corretta e, se serve, perché le altre no.
+- Prima di consegnare rileggi ogni domanda: se il testo dopo "Corretta:" non è identico all'opzione marcata [x], la marcatura è sbagliata, correggila.
 - Copri punti diversi, non ripetere lo stesso concetto, non uscire dalle fonti.
 - Solo il formato: niente numerazione, introduzioni, commenti o note.
 ```
 
-Il prompt si costruisce dalla home: due campi per il nome della fonte e per il capitolo, quattro
-interruttori per risposta multipla, tag, domande di ragionamento e collegamenti. Lasciando i campi
-vuoti il quiz copre tutte le fonti del notebook. Il bottone lo copia già assemblato.
+Il prompt si costruisce dalla home: tre campi per il nome della fonte, il capitolo e quante domande
+generare, quattro interruttori per risposta multipla, tag, domande di ragionamento e collegamenti.
+Lasciando i campi vuoti il quiz copre tutte le fonti del notebook. Il bottone lo copia già
+assemblato.
+
+Il quiz finisce fra le **note** del notebook, mai fra le fonti: così non rientra nelle fonti da cui
+NotebookLM genera le domande successive. Oltre le 15 domande il prompt passa a blocchi cumulativi,
+perché una risposta sola verrebbe troncata: a ogni blocco si risponde `continua`, e la nota da
+caricare è solo l'ultima, quella che finisce per `- FINALE`.
 
 ## Punteggio
 

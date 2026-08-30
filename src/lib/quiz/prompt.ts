@@ -26,12 +26,18 @@ export const DEFAULT_PROMPT_OPTIONS: PromptOptions = {
 };
 
 /** Questions per round when the quiz is long enough that a single answer would get truncated. */
-const BATCH_SIZE = 15;
+export const BATCH_SIZE = 15;
 
 /** Only a plain positive number counts: anything else means "decide tu". */
 function requested(options: PromptOptions): number | null {
 	const count = Number.parseInt(options.count.trim(), 10);
 	return Number.isFinite(count) && count > 0 ? count : null;
+}
+
+/** Whether the prompt asks for the quiz in cumulative rounds instead of one shot. */
+export function isBatched(options: PromptOptions): boolean {
+	const count = requested(options);
+	return count !== null && count > BATCH_SIZE;
 }
 
 function titlePlaceholder(options: PromptOptions): string {
@@ -51,26 +57,27 @@ function scope(options: PromptOptions): string {
 }
 
 /**
- * How the quiz has to come out of NotebookLM. Past a certain length one answer gets truncated, so
- * the quiz is grown in cumulative rounds: every round rewrites the previous questions verbatim and
- * appends new ones, and only the file marked FINALE is the one to load.
+ * How the quiz has to come out of NotebookLM. It lands in the notebook's notes, never in its
+ * sources, so the quiz is not fed back into the next generation. Past a certain length one answer
+ * gets truncated, so the quiz is grown in cumulative rounds: every round rewrites the previous
+ * questions verbatim and appends new ones, and only the note marked FINALE is the one to load.
  */
 function delivery(options: PromptOptions): string[] {
 	const title = titlePlaceholder(options);
 	const count = requested(options);
 
-	if (!count || count <= BATCH_SIZE)
+	if (!isBatched(options))
 		return [
-			`Salvalo come nuova fonte del notebook, in un file "${title}.md" che contenga solo il quiz, e rispondi in chat con lo stesso identico contenuto, senza testo prima o dopo.`
+			`Salvalo fra le NOTE del notebook, mai fra le fonti: una nuova nota intitolata "${title}" che contenga solo il quiz, e rispondi in chat con lo stesso identico contenuto, senza testo prima o dopo.`
 		];
 
 	return [
-		`Procedi a blocchi da ${BATCH_SIZE} domande, ognuno cumulativo:`,
-		`- Primo blocco: salva una nuova fonte "${title} - 1.md" con le prime ${BATCH_SIZE} domande.`,
-		`- Blocchi successivi: salva ogni volta una NUOVA fonte "${title} - <n>.md" che ripete alla lettera tutte le domande dei blocchi precedenti e aggiunge in coda ${BATCH_SIZE} domande nuove.`,
-		`- L'ultimo blocco lo chiami "${title} - FINALE.md" e contiene tutte e ${count} le domande.`,
+		`Procedi a blocchi da ${BATCH_SIZE} domande, ognuno cumulativo. Ogni blocco lo salvi fra le NOTE del notebook, mai fra le fonti:`,
+		`- Primo blocco: una nuova nota intitolata "${title} - 1" con le prime ${BATCH_SIZE} domande.`,
+		`- Blocchi successivi: ogni volta una NUOVA nota intitolata "${title} - <n>", che ripete alla lettera tutte le domande dei blocchi precedenti e aggiunge in coda ${BATCH_SIZE} domande nuove.`,
+		`- L'ultima nota la intitoli "${title} - FINALE" e contiene tutte e ${count} le domande.`,
 		'- Non riformulare, non riordinare e non togliere le domande già generate: ricopiale identiche.',
-		`- Chiudi ogni blocco scrivendo in chat solo "blocco <n>: <domande finora> su ${count}", poi fermati e aspetta che io scriva "continua". Il file lo scrivi comunque per intero, in chat non ripetere il quiz.`
+		`- Chiudi ogni blocco scrivendo in chat solo "blocco <n>: <domande finora> su ${count}", poi fermati e aspetta che io scriva "continua". La nota la scrivi comunque per intero, in chat non ripetere il quiz.`
 	];
 }
 
