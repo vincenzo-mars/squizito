@@ -13,15 +13,13 @@ export type Question = {
 	text: string;
 	tag?: string;
 	explanation?: string;
-	/** Text the explanation quotes as the correct option, when the source declares it. */
-	citedAnswer?: string;
 	/** `choice` is the classic multiple choice, `match` links names to definitions. */
 	kind: 'choice' | 'match';
 	/** Empty on a `match` question. */
 	options: QuestionOption[];
 	/** Empty on a `choice` question. */
 	pairs: MatchPair[];
-	/** True when a `choice` question has more than one correct option. */
+	/** True when more than one option is correct, as declared by the `Corrette:` citation. */
 	multiple: boolean;
 };
 

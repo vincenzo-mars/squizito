@@ -1,21 +1,19 @@
-import type { MatchPair, ParseIssue, ParseResult, Question, QuestionOption } from './types';
+import { parseCitations, resolveCorrect } from './answers';
+import type { MatchPair, ParseIssue, ParseResult, Question } from './types';
 
 const FENCE = /^\s*```/;
 const TITLE = /^\s*#\s*(.*)$/;
 const HEADING = /^\s*#{2,6}\s*(.*)$/;
-/** Bullets an LLM actually emits: hyphen, asterisk, plus, bullet, en dash, em dash. */
-const OPTION = /^\s*[-*+•–—]\s*[[(]\s*([xX]?)\s*[\])]\s*(.*)$/;
+/** Una voce puntata: bullet legittimi che un LLM emette, trattino, asterisco, più, punto, en/em dash. */
+const BULLET = /^\s*[-*+•–—]\s*(.+)$/;
+/** Il vecchio formato a casella, ancora riconoscibile per dare un errore chiaro invece di uno confuso. */
+const LEGACY_BOX = /^\s*[[(]\s*[xX]?\s*[\])]/;
 const TAG = /^\s*(?:tag|tags|categoria|category)\s*:\s*(.*)$/i;
 const QUOTE = /^\s*>\s?(.*)$/;
 const RULE = /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/;
-const PAIR = /^\s*[-*+•–—]\s*(.+?)\s*(?:->|→|=>|-->|›)\s*(.*)$/;
+/** `nome -> definizione`, applicata al testo già spogliato del carattere di elenco. */
+const PAIR = /^(.+?)\s*(?:->|→|=>|-->|›)\s*(.*)$/;
 const NUMBERING = /^\d+\s*[.)\]]\s*/;
-/**
- * `> Corretta: "testo". resto` — the redundancy that makes a mismarked [x] detectable.
- * Quoted first, because quotes delimit the answer exactly; otherwise up to the first stop.
- */
-const CITED_QUOTED = /^\s*corrett[ao]\s*:\s*[«"“'](.+?)[»"”']\s*[.;]?\s*/i;
-const CITED_PLAIN = /^\s*corrett[ao]\s*:\s*([^.;]+)\s*[.;]\s*/i;
 
 /** Strips the inline markdown NotebookLM tends to sprinkle around, so the UI renders plain text. */
 function clean(raw: string): string {
@@ -30,15 +28,14 @@ type Draft = {
 	line: number;
 	text: string;
 	tag?: string;
-	explanation: string[];
-	options: QuestionOption[];
-	pairs: MatchPair[];
+	quotes: string[];
+	bullets: { line: number; text: string }[];
 };
 
 /**
  * Parses the Markdown quiz syntax documented in the README. The parser is deliberately forgiving:
  * code fences, numbered headings, `*` bullets and stray prose are tolerated, only the structure
- * that carries meaning (headings, `[x]` options) is enforced.
+ * that carries meaning (headings, bullets, the `Corretta:`/`Corrette:` citation) is enforced.
  */
 export function parseQuiz(source: string): ParseResult {
 	const errors: ParseIssue[] = [];
@@ -69,42 +66,25 @@ export function parseQuiz(source: string): ParseResult {
 			current = {
 				line: number,
 				text: clean(headingMatch[1]).replace(NUMBERING, ''),
-				explanation: [],
-				options: [],
-				pairs: []
+				quotes: [],
+				bullets: []
 			};
 			drafts.push(current);
 			continue;
 		}
 
-		const optionMatch = line.match(OPTION);
-		if (optionMatch) {
+		const bulletMatch = line.match(BULLET);
+		if (bulletMatch) {
 			if (!current) {
-				errors.push({ line: number, message: 'Opzione trovata prima di una domanda `## ...`.' });
+				errors.push({ line: number, message: 'Elenco trovato prima di una domanda `## ...`.' });
 				continue;
 			}
-			const text = clean(optionMatch[2]);
+			const text = clean(bulletMatch[1]);
 			if (!text) {
-				errors.push({ line: number, message: 'Opzione senza testo.' });
+				errors.push({ line: number, message: 'Voce senza testo.' });
 				continue;
 			}
-			current.options.push({ text, correct: optionMatch[1].toLowerCase() === 'x' });
-			continue;
-		}
-
-		const pairMatch = line.match(PAIR);
-		if (pairMatch) {
-			if (!current) {
-				errors.push({ line: number, message: 'Coppia trovata prima di una domanda `## ...`.' });
-				continue;
-			}
-			const name = clean(pairMatch[1]);
-			const definition = clean(pairMatch[2]);
-			if (!name || !definition) {
-				errors.push({ line: number, message: 'Coppia incompleta: serve `- nome -> definizione`.' });
-				continue;
-			}
-			current.pairs.push({ name, definition });
+			current.bullets.push({ line: number, text });
 			continue;
 		}
 
@@ -119,7 +99,7 @@ export function parseQuiz(source: string): ParseResult {
 		if (quoteMatch) {
 			const text = clean(quoteMatch[1]);
 			if (!text) continue;
-			if (current) current.explanation.push(text);
+			if (current) current.quotes.push(text);
 			else description.push(text);
 			continue;
 		}
@@ -134,77 +114,140 @@ export function parseQuiz(source: string): ParseResult {
 			errors.push({ line: draft.line, message: 'Domanda senza testo.' });
 			continue;
 		}
-		if (draft.options.length && draft.pairs.length) {
+		if (!draft.bullets.length) {
+			errors.push({ line: draft.line, message: `La domanda ${label} non ha nessuna opzione.` });
+			continue;
+		}
+
+		const legacy = draft.bullets.find((bullet) => LEGACY_BOX.test(bullet.text));
+		if (legacy) {
 			errors.push({
-				line: draft.line,
-				message: `La domanda ${label} mescola opzioni [x] e coppie "nome -> definizione": tienile separate.`
+				line: legacy.line,
+				message: `La domanda ${label} usa la vecchia sintassi [x]/[ ]: ora le opzioni sono trattini semplici e la risposta si dichiara con una riga > Corretta: "<testo dell'opzione>".`
 			});
 			continue;
 		}
 
-		if (draft.pairs.length) {
-			if (draft.pairs.length < 2) {
+		const citedTexts: string[] = [];
+		const explanationParts: string[] = [];
+		for (const quote of draft.quotes) {
+			const citation = parseCitations(quote);
+			if (citation) {
+				citedTexts.push(...citation.texts);
+				if (citation.rest) explanationParts.push(citation.rest);
+			} else {
+				explanationParts.push(quote);
+			}
+		}
+		const explanation = explanationParts.length ? explanationParts.join(' ') : undefined;
+
+		if (!citedTexts.length) {
+			const pairCandidates = draft.bullets.map((bullet) => bullet.text.match(PAIR));
+			const pairCount = pairCandidates.filter(Boolean).length;
+
+			if (pairCount > 0 && pairCount < draft.bullets.length) {
 				errors.push({
 					line: draft.line,
-					message: `Il collegamento ${label} ha una sola coppia: ne servono almeno 2.`
+					message: `La domanda ${label} mescola opzioni e coppie "nome -> definizione": tienile separate.`
 				});
 				continue;
 			}
-			if (draft.pairs.length > 8) {
-				errors.push({
-					line: draft.line,
-					message: `Il collegamento ${label} ha ${draft.pairs.length} coppie: il massimo è 8.`
+
+			if (pairCount > 0 && pairCount === draft.bullets.length) {
+				if (pairCount < 2) {
+					errors.push({
+						line: draft.line,
+						message: `Il collegamento ${label} ha una sola coppia: ne servono almeno 2.`
+					});
+					continue;
+				}
+				if (pairCount > 8) {
+					errors.push({
+						line: draft.line,
+						message: `Il collegamento ${label} ha ${pairCount} coppie: il massimo è 8.`
+					});
+					continue;
+				}
+				const pairs: MatchPair[] = pairCandidates.map((match) => ({
+					name: clean(match![1]),
+					definition: clean(match![2])
+				}));
+				if (pairs.some((pair) => !pair.name || !pair.definition)) {
+					errors.push({
+						line: draft.line,
+						message: `Coppia incompleta nella domanda ${label}: serve "nome -> definizione".`
+					});
+					continue;
+				}
+				questions.push({
+					text: draft.text,
+					tag: draft.tag,
+					explanation,
+					kind: 'match',
+					options: [],
+					pairs,
+					multiple: false
 				});
 				continue;
 			}
 
-			questions.push({
-				text: draft.text,
-				tag: draft.tag,
-				explanation: draft.explanation.length ? draft.explanation.join(' ') : undefined,
-				kind: 'match',
-				options: [],
-				pairs: draft.pairs,
-				multiple: false
+			errors.push({
+				line: draft.line,
+				message: `La domanda ${label} non dichiara la risposta: aggiungi una riga > Corretta: "<testo esatto dell'opzione giusta>".`
 			});
 			continue;
 		}
 
-		if (draft.options.length < 2) {
+		if (draft.bullets.length < 2) {
 			errors.push({
 				line: draft.line,
-				message: `La domanda ${label} ha ${draft.options.length} opzioni: ne servono almeno 2.`
-			});
-			continue;
-		}
-		const correct = draft.options.filter((option) => option.correct).length;
-		if (correct === 0) {
-			errors.push({
-				line: draft.line,
-				message: `La domanda ${label} non ha nessuna opzione corretta: marcane almeno una con [x].`
-			});
-			continue;
-		}
-		if (correct === draft.options.length) {
-			errors.push({
-				line: draft.line,
-				message: `Nella domanda ${label} tutte le opzioni sono corrette: serve almeno una opzione sbagliata.`
+				message: `La domanda ${label} ha ${draft.bullets.length} opzione: ne servono almeno 2.`
 			});
 			continue;
 		}
 
-		const joined = draft.explanation.join(' ');
-		const cited = joined.match(CITED_QUOTED) ?? joined.match(CITED_PLAIN);
+		const optionTexts = draft.bullets.map((bullet) => bullet.text);
+		const { correct, unmatched, ambiguous } = resolveCorrect(optionTexts, citedTexts);
+
+		if (unmatched.length) {
+			errors.push({
+				line: draft.line,
+				message: `Nella domanda ${label} la risposta citata "${unmatched[0]}" non corrisponde a nessuna opzione: copiala identica da una delle opzioni.`
+			});
+			continue;
+		}
+		if (ambiguous.length) {
+			errors.push({
+				line: draft.line,
+				message: `Nella domanda ${label} la risposta citata "${ambiguous[0]}" corrisponde a più di una opzione: le opzioni devono essere tutte diverse fra loro.`
+			});
+			continue;
+		}
+
+		const correctCount = correct.filter(Boolean).length;
+		if (correctCount === 0) {
+			errors.push({
+				line: draft.line,
+				message: `La domanda ${label} non ha nessuna opzione corretta: cita il testo dell'opzione giusta dopo "Corretta:".`
+			});
+			continue;
+		}
+		if (correctCount === optionTexts.length) {
+			errors.push({
+				line: draft.line,
+				message: `Nella domanda ${label} tutte le opzioni risultano corrette: serve almeno una opzione sbagliata.`
+			});
+			continue;
+		}
 
 		questions.push({
 			text: draft.text,
 			tag: draft.tag,
-			explanation: cited ? joined.slice(cited[0].length).trim() || undefined : joined || undefined,
-			citedAnswer: cited ? clean(cited[1]) : undefined,
+			explanation,
 			kind: 'choice',
-			options: draft.options,
+			options: optionTexts.map((text, index) => ({ text, correct: correct[index] })),
 			pairs: [],
-			multiple: correct > 1
+			multiple: correctCount > 1
 		});
 	}
 
@@ -212,7 +255,7 @@ export function parseQuiz(source: string): ParseResult {
 		errors.push({
 			line: 0,
 			message:
-				'Nessuna domanda trovata: ogni domanda inizia con `##` e ha opzioni `- [ ]` / `- [x]`.'
+				'Nessuna domanda trovata: ogni domanda inizia con `##`, ha almeno due opzioni `- <testo>` e una riga `> Corretta: "..."`.'
 		});
 	}
 

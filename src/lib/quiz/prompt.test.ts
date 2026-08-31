@@ -40,10 +40,21 @@ describe('buildPrompt', () => {
 		for (const count of ['12', '50']) {
 			const prompt = buildPrompt({ ...base, count });
 
-			expect(prompt).toContain('- [x] <opzione corretta>');
+			expect(prompt).toContain('- <opzione>');
 			expect(prompt).toContain('> Corretta: "<testo identico dell\'opzione corretta>"');
-			expect(prompt).toContain('la marcatura è sbagliata, correggila');
+			expect(prompt).toContain("identico all'opzione, carattere per carattere");
+			// [x] compare solo nella regola che lo vieta esplicitamente, non nel template.
+			expect(prompt).not.toContain('- [x]');
+			expect(prompt).not.toContain('- [ ]');
 		}
+	});
+
+	it('shows the Corrette: block only when multiple answers are allowed', () => {
+		const withMultiple = buildPrompt({ ...base, count: '12', multiple: true });
+		const withoutMultiple = buildPrompt({ ...base, count: '12', multiple: false });
+
+		expect(withMultiple).toContain('> Corrette: "<testo identico della prima opzione corretta>"');
+		expect(withoutMultiple).not.toContain('Corrette:');
 	});
 
 	it('flags the batched mode only past the round size', () => {

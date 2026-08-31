@@ -20,41 +20,44 @@ Live: https://vincenzo-mars.github.io/squizito/
 
 ## Qual è la capitale d'Italia?
 
-- [ ] Milano
-- [x] Roma
-- [ ] Napoli
+- Milano
+- Roma
+- Napoli
 
-> Roma è capitale dal 1871. Riga opzionale, mostrata dopo la risposta.
+> Corretta: "Roma". Roma è capitale dal 1871. La spiegazione è mostrata dopo la risposta.
 
 ## Quali di questi sono tipizzati staticamente?
 
 Tag: linguaggi
 
-- [x] Rust
-- [x] TypeScript
-- [ ] Python
+- Rust
+- TypeScript
+- Python
 
-> Due `[x]` significa risposta multipla: per il punto le devi prendere tutte.
+> Corrette: "Rust"; "TypeScript". Due risposte citate significano risposta multipla: per il punto le devi prendere tutte.
 ```
 
-| Elemento                        | Regola                                                                      |
-| ------------------------------- | --------------------------------------------------------------------------- |
-| `# Titolo`                      | opzionale, una sola volta                                                   |
-| `>` subito dopo il titolo       | descrizione del quiz                                                        |
-| `## Domanda`                    | inizia una domanda, la numerazione iniziale viene rimossa                   |
-| `- [x]` / `- [ ]`               | opzione giusta / sbagliata, accetta `[X]`, `*` al posto di `-`, spazi extra |
-| più di una `[x]`                | domanda a risposta multipla                                                 |
-| `>` dopo le opzioni             | spiegazione, opzionale                                                      |
-| `Tag: ...`                      | opzionale, raggruppa le card                                                |
-| `---`, righe vuote, altro testo | ignorati                                                                    |
+| Elemento                        | Regola                                                                                 |
+| ------------------------------- | -------------------------------------------------------------------------------------- |
+| `# Titolo`                      | opzionale, una sola volta                                                              |
+| `>` subito dopo il titolo       | descrizione del quiz                                                                   |
+| `## Domanda`                    | inizia una domanda, la numerazione iniziale viene rimossa                              |
+| `- opzione`                     | una opzione, accetta `*`, `+`, `•`, `–` e `—` al posto del trattino                    |
+| `> Corretta: "..."`             | dichiara la risposta: il testo fra virgolette deve essere identico a una delle opzioni |
+| `> Corrette: "..."; "..."`      | risposta multipla, elenca tutti i testi corretti                                       |
+| `>` dopo la citazione           | spiegazione, opzionale, va dopo la citazione o su una riga a parte                     |
+| `Tag: ...`                      | opzionale, raggruppa le card                                                           |
+| `---`, righe vuote, altro testo | ignorati                                                                               |
 
-Vincoli: almeno 2 opzioni per domanda, almeno una corretta e almeno una sbagliata. Gli errori di
-formato indicano riga e motivo.
+Vincoli: almeno 2 opzioni per domanda, ogni domanda a scelta deve avere la riga
+`Corretta:`/`Corrette:`, i testi citati devono combaciare con le opzioni, le opzioni devono essere
+tutte diverse fra loro, e almeno una deve restare non citata. Gli errori di formato indicano riga
+e motivo.
 
 ### Collegamenti termine-definizione
 
-Un blocco `##` le cui righe hanno la forma `- nome -> definizione`, senza `[ ]`, diventa un
-esercizio di collegamento: l'app mescola le due colonne e le si riunisce a mano.
+Un blocco `##` le cui righe hanno la forma `- nome -> definizione`, senza la riga `Corretta:`,
+diventa un esercizio di collegamento: l'app mescola le due colonne e le si riunisce a mano.
 
 ```markdown
 ## Collega ogni processo alla sua descrizione
@@ -66,7 +69,8 @@ esercizio di collegamento: l'app mescola le due colonne e le si riunisce a mano.
 > Sono tre processi distinti.
 ```
 
-Da 2 a 8 coppie, `→` e `=>` valgono come `->`, e un blocco non può mescolare coppie e opzioni `[x]`.
+Da 2 a 8 coppie, `→` e `=>` valgono come `->`, e un blocco non può mescolare coppie e opzioni. Un
+collegamento non ha mai la riga `Corretta:`: se c'è, il blocco viene letto come domanda a scelta.
 Il punteggio è tutto o niente, come per le domande a risposta multipla.
 
 ## Prompt per NotebookLM
@@ -81,18 +85,30 @@ Salvalo fra le NOTE del notebook, mai fra le fonti: una nuova nota intitolata "<
 > <una riga su cosa copre>
 
 ## <domanda>
-- [x] <opzione corretta>
-- [ ] <opzione sbagliata>
-- [ ] <opzione sbagliata>
+- <opzione>
+- <opzione>
+- <opzione>
+- <opzione>
 > Corretta: "<testo identico dell'opzione corretta>". <spiegazione esaustiva>
 
+## <domanda con più risposte corrette>
+- <opzione>
+- <opzione>
+- <opzione>
+- <opzione>
+> Corrette: "<testo identico della prima opzione corretta>"; "<testo identico della seconda>". <spiegazione esaustiva>
+
 Regole:
-- 4 opzioni per domanda. Alterna domande con una sola [x] e domande con più [x], queste ultime in minoranza e senza dire quante siano le corrette.
-- Metti sempre la risposta corretta come PRIMA opzione e marcala. Non mescolare le opzioni: al mescolamento pensa l'app.
+- 4 opzioni per domanda. Alterna domande con una sola risposta corretta e domande con più risposte corrette, queste ultime in minoranza e senza dire nel testo della domanda quante siano.
+- Le opzioni sono trattini semplici: niente caselle [ ] o [x], niente lettere o numeri davanti, niente grassetto sul testo.
+- Metti sempre la risposta corretta come PRIMA opzione. Non mescolare le opzioni: al mescolamento pensa l'app.
 - Distrattori plausibili e lunghi quanto la corretta.
+- Le opzioni di una stessa domanda devono essere tutte diverse fra loro: mai due opzioni con lo stesso testo.
+- Niente domande con negazione ("quale NON è", "quale è falso"). Niente opzioni "tutte le precedenti" o "nessuna delle precedenti".
 - Ogni domanda si regge da sola: niente rimandi a pagine, paragrafi o "come sopra".
-- La riga "> " inizia citando alla lettera l'opzione corretta: > Corretta: "<testo identico dell'opzione marcata>". Poi spiega perché è corretta e, se serve, perché le altre no.
-- Prima di consegnare rileggi ogni domanda: se il testo dopo "Corretta:" non è identico all'opzione marcata [x], la marcatura è sbagliata, correggila.
+- Subito dopo le opzioni, una riga "> " dichiara la risposta: > Corretta: "<testo copiato alla lettera dall'opzione giusta>". Poi spiega perché è corretta e, se serve, perché le altre no.
+- Se le risposte corrette sono più di una, la riga diventa: > Corrette: "<testo della prima>"; "<testo della seconda>". Elencale tutte, ognuna fra virgolette, separate da punto e virgola.
+- Il testo fra virgolette deve essere identico all'opzione, carattere per carattere: è l'unico modo che l'app ha di sapere qual è la risposta giusta. Se manca la riga, o se il testo non combacia con nessuna opzione, il quiz non si carica.
 - Copri punti diversi, non ripetere lo stesso concetto, non uscire dalle fonti.
 - Solo il formato: niente numerazione, introduzioni, commenti o note.
 ```
