@@ -36,8 +36,9 @@
 		'# Titolo del quiz',
 		'',
 		'## Prima domanda?',
-		'- [x] Risposta giusta',
-		'- [ ] Risposta sbagliata'
+		'- Risposta giusta',
+		'- Risposta sbagliata',
+		'> Corretta: "Risposta giusta". Perché.'
 	].join('\n');
 
 	let prompt = $derived(buildPrompt(settings.prompt));
@@ -252,8 +253,8 @@
 
 			<p class="muted">
 				Il parser è tollerante: numerazione, code fence, grassetto e testo fuori formato non danno
-				fastidio. Serve solo che ogni domanda inizi con <code>##</code> e abbia almeno due opzioni,
-				di cui almeno una marcata <code>[x]</code>.
+				fastidio. Serve solo che ogni domanda inizi con <code>##</code>, abbia almeno due opzioni e
+				una riga <code>&gt; Corretta: "..."</code> che ripete il testo dell'opzione giusta.
 			</p>
 		</div>
 	</details>
