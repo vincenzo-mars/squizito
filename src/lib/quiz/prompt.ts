@@ -108,11 +108,24 @@ function format(options: PromptOptions): string {
 	if (options.tags) lines.push('Tag: <argomento>');
 
 	lines.push(
-		'- [x] <opzione corretta>',
-		'- [ ] <opzione sbagliata>',
-		'- [ ] <opzione sbagliata>',
+		'- <opzione>',
+		'- <opzione>',
+		'- <opzione>',
+		'- <opzione>',
 		'> Corretta: "<testo identico dell\'opzione corretta>". <spiegazione esaustiva>'
 	);
+
+	if (options.multiple) {
+		lines.push(
+			'',
+			'## <domanda con più risposte corrette>',
+			'- <opzione>',
+			'- <opzione>',
+			'- <opzione>',
+			'- <opzione>',
+			'> Corrette: "<testo identico della prima opzione corretta>"; "<testo identico della seconda>". <spiegazione esaustiva>'
+		);
+	}
 
 	if (options.matching) {
 		lines.push(
@@ -130,22 +143,34 @@ function format(options: PromptOptions): string {
 function rules(options: PromptOptions): string[] {
 	const list = [
 		options.multiple
-			? '4 opzioni per domanda. Alterna domande con una sola [x] e domande con più [x], queste ultime in minoranza e senza dire quante siano le corrette.'
-			: '4 opzioni per domanda, una sola [x].',
-		"Metti sempre la risposta corretta come PRIMA opzione e marcala. Non mescolare le opzioni: al mescolamento pensa l'app.",
+			? '4 opzioni per domanda. Alterna domande con una sola risposta corretta e domande con più risposte corrette, queste ultime in minoranza e senza dire nel testo della domanda quante siano.'
+			: '4 opzioni per domanda, una sola corretta.',
+		'Le opzioni sono trattini semplici: niente caselle [ ] o [x], niente lettere o numeri davanti, niente grassetto sul testo.',
+		"Metti sempre la risposta corretta come PRIMA opzione. Non mescolare le opzioni: al mescolamento pensa l'app.",
 		'Distrattori plausibili e lunghi quanto la corretta.',
+		'Le opzioni di una stessa domanda devono essere tutte diverse fra loro: mai due opzioni con lo stesso testo.',
+		'Niente domande con negazione ("quale NON è", "quale è falso"). Niente opzioni "tutte le precedenti" o "nessuna delle precedenti".',
 		'Ogni domanda si regge da sola: niente rimandi a pagine, paragrafi o "come sopra".',
-		'La riga "> " inizia citando alla lettera l\'opzione corretta: > Corretta: "<testo identico dell\'opzione marcata>". Poi spiega perché è corretta e, se serve, perché le altre no.',
-		'Prima di consegnare rileggi ogni domanda: se il testo dopo "Corretta:" non è identico all\'opzione marcata [x], la marcatura è sbagliata, correggila.',
-		'Copri punti diversi, non ripetere lo stesso concetto, non uscire dalle fonti.'
+		'Subito dopo le opzioni, una riga "> " dichiara la risposta: > Corretta: "<testo copiato alla lettera dall\'opzione giusta>". Poi spiega perché è corretta e, se serve, perché le altre no.'
 	];
+
+	if (options.multiple) {
+		list.push(
+			'Se le risposte corrette sono più di una, la riga diventa: > Corrette: "<testo della prima>"; "<testo della seconda>". Elencale tutte, ognuna fra virgolette, separate da punto e virgola.'
+		);
+	}
+
+	list.push(
+		"Il testo fra virgolette deve essere identico all'opzione, carattere per carattere: è l'unico modo che l'app ha di sapere qual è la risposta giusta. Se manca la riga, o se il testo non combacia con nessuna opzione, il quiz non si carica.",
+		'Copri punti diversi, non ripetere lo stesso concetto, non uscire dalle fonti.'
+	);
 
 	if (options.tags)
 		list.push('Tag: una o due parole per argomento, riusa gli stessi fra domande affini.');
 	if (options.reasoning) list.push('Domande di applicazione e ragionamento, non di sola memoria.');
 	if (options.matching) {
 		list.push(
-			'Collegamenti: 3-5 coppie "termine -> definizione", senza [x], termini dello stesso ambito e confondibili fra loro, alternati alle altre domande.'
+			'Collegamenti: 3-5 coppie "termine -> definizione", termini dello stesso ambito e confondibili fra loro, alternati alle altre domande. Nei collegamenti la riga "> " è solo una nota: non ci va mai "Corretta:".'
 		);
 	}
 

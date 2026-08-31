@@ -39,23 +39,29 @@
 	});
 
 	let progress = $derived(total ? ((position - 1) / total) * 100 : 0);
+	// Il badge segue la punta della barra, ma resta dentro i bordi anche a inizio/fine corsa.
+	let badgePosition = $derived(Math.min(94, Math.max(6, progress)));
 </script>
 
 <div class="bar">
-	<div
-		class="track"
-		role="progressbar"
-		aria-valuenow={position}
-		aria-valuemin={1}
-		aria-valuemax={total}
-	>
-		<div class="fill" style="width: {progress}%"></div>
+	<div class="track-wrap">
+		<div
+			class="track"
+			role="progressbar"
+			aria-valuenow={position}
+			aria-valuemin={1}
+			aria-valuemax={total}
+		>
+			<div class="fill" style="width: {progress}%"></div>
+		</div>
+		{#if streak >= 2}
+			<span class="streak" style="left: {badgePosition}%" title="risposte giuste di fila">
+				🔥{streak}
+			</span>
+		{/if}
 	</div>
 	<div class="meta">
 		<span class="counter">{position} / {total}</span>
-		{#if streak >= 2}
-			<span class="streak" title="risposte giuste di fila">🔥 {streak}</span>
-		{/if}
 		<span class="score">{displayed} pt</span>
 	</div>
 </div>
@@ -64,6 +70,12 @@
 	.bar {
 		display: grid;
 		gap: 0.6rem;
+	}
+
+	.track-wrap {
+		position: relative;
+		/* Spazio sopra la barra per il badge che sporge dalla punta. */
+		padding-top: 1.4rem;
 	}
 
 	.track {
@@ -97,10 +109,16 @@
 	}
 
 	.streak {
+		position: absolute;
+		top: 0;
+		transform: translateX(-50%);
 		background: var(--yellow);
 		color: #543f00;
-		padding: 0.1rem 0.55rem;
+		padding: 0.1rem 0.5rem;
 		border-radius: 999px;
+		font-size: 0.85rem;
+		white-space: nowrap;
+		transition: left 420ms var(--ease);
 		animation: bump 320ms var(--ease);
 	}
 
